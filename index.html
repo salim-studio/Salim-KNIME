@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salim-KNIME | برنامج التحليل الإحصائي</title>
+    <meta name="description" content="برنامج تحليل إحصائي متقدم بأسلوب البرمجة المرئية">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Header / Toolbar -->
+    <header class="toolbar">
+        <div class="toolbar-left">
+            <div class="logo">
+                <i class="fas fa-project-diagram"></i>
+                <span>Salim-KNIME</span>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-actions">
+                <button class="toolbar-btn" id="newWorkflowBtn" title="سير عمل جديد">
+                    <i class="fas fa-file-circle-plus"></i>
+                    <span data-i18n="newWorkflow">جديد</span>
+                </button>
+                <button class="toolbar-btn" id="openWorkflowBtn" title="فتح سير عمل">
+                    <i class="fas fa-folder-open"></i>
+                    <span data-i18n="open">فتح</span>
+                </button>
+                <button class="toolbar-btn" id="saveWorkflowBtn" title="حفظ سير العمل">
+                    <i class="fas fa-save"></i>
+                    <span data-i18n="save">حفظ</span>
+                </button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-actions">
+                <button class="toolbar-btn primary" id="executeAllBtn" title="تنفيذ الكل">
+                    <i class="fas fa-play"></i>
+                    <span data-i18n="executeAll">تنفيذ الكل</span>
+                </button>
+                <button class="toolbar-btn" id="executeSelectedBtn" title="تنفيذ المحدد">
+                    <i class="fas fa-play-circle"></i>
+                </button>
+                <button class="toolbar-btn danger" id="stopExecutionBtn" title="إيقاف التنفيذ">
+                    <i class="fas fa-stop"></i>
+                </button>
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <button class="toolbar-btn icon-only" id="themeToggleBtn" title="تبديل الوضع">
+                <i class="fas fa-moon"></i>
+            </button>
+            <button class="toolbar-btn icon-only" id="langToggleBtn" title="تغيير اللغة">
+                <span class="lang-indicator">EN</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Sidebar - Node Palette -->
+        <aside class="sidebar" id="nodePalette">
+            <div class="sidebar-header">
+                <h3 data-i18n="nodePalette">لوحة العقد</h3>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="nodeSearch" placeholder="بحث..." data-i18n-placeholder="search">
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <!-- IO Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="io">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-file-import category-icon"></i>
+                        <span data-i18n="ioNodes">الإدخال/الإخراج</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="excelReader">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #217346, #185c37);">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <span data-i18n="excelReader">قارئ Excel</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="csvReader">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ff9800, #f57c00);">
+                                <i class="fas fa-file-csv"></i>
+                            </div>
+                            <span data-i18n="csvReader">قارئ CSV</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="tableView">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #2196f3, #1976d2);">
+                                <i class="fas fa-table"></i>
+                            </div>
+                            <span data-i18n="tableView">عرض الجدول</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="excelWriter">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #4caf50, #388e3c);">
+                                <i class="fas fa-file-export"></i>
+                            </div>
+                            <span data-i18n="excelWriter">كاتب Excel</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Processing Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="processing">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-cogs category-icon"></i>
+                        <span data-i18n="processingNodes">معالجة البيانات</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="columnFilter">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #9c27b0, #7b1fa2);">
+                                <i class="fas fa-columns"></i>
+                            </div>
+                            <span data-i18n="columnFilter">تصفية الأعمدة</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="rowFilter">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #e91e63, #c2185b);">
+                                <i class="fas fa-filter"></i>
+                            </div>
+                            <span data-i18n="rowFilter">تصفية الصفوف</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="sorter">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #00bcd4, #0097a7);">
+                                <i class="fas fa-sort"></i>
+                            </div>
+                            <span data-i18n="sorter">الترتيب</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="missingValue">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ff5722, #e64a19);">
+                                <i class="fas fa-eraser"></i>
+                            </div>
+                            <span data-i18n="missingValue">القيم المفقودة</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="standardScaler">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                                <i class="fas fa-balance-scale-right"></i>
+                            </div>
+                            <span data-i18n="standardScaler">التوحيد القياسي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="minMaxScaler">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">
+                                <i class="fas fa-arrows-alt-h"></i>
+                            </div>
+                            <span data-i18n="minMaxScaler">تحجيم Min-Max</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="statistics">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-calculator category-icon"></i>
+                        <span data-i18n="statisticsNodes">التحليل الإحصائي</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="descriptiveStats">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #3f51b5, #303f9f);">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <span data-i18n="descriptiveStats">الإحصاء الوصفي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="correlation">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #673ab7, #512da8);">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <span data-i18n="correlation">الارتباط</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="linearRegression">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #009688, #00796b);">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <span data-i18n="linearRegression">الانحدار الخطي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="tTest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #795548, #5d4037);">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                            <span data-i18n="tTest">اختبار T</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="multipleRegression">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #1565c0, #0d47a1);">
+                                <i class="fas fa-superscript"></i>
+                            </div>
+                            <span data-i18n="multipleRegression">الانحدار المتعدد</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="ardl">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #7c3aed, #5b21b6);">
+                                <i class="fas fa-wave-square"></i>
+                            </div>
+                            <span data-i18n="ardl">ARDL تحليل</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="varVecm">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #0891b2, #0e7490);">
+                                <i class="fas fa-diagram-project"></i>
+                            </div>
+                            <span data-i18n="varVecm">VAR/VECM تحليل</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="stationarityTest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">
+                                <i class="fas fa-chart-area"></i>
+                            </div>
+                            <span data-i18n="stationarityTest">اختبار الاستقرارية</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="panelData">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #7c3aed, #6d28d9);">
+                                <i class="fas fa-table-columns"></i>
+                            </div>
+                            <span data-i18n="panelData">تحليل بانل</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="visualization">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-chart-pie category-icon"></i>
+                        <span data-i18n="visualizationNodes">التصور البياني</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="scatterPlot">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f44336, #d32f2f);">
+                                <i class="fas fa-braille"></i>
+                            </div>
+                            <span data-i18n="scatterPlot">مخطط التشتت</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="lineChart">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #4caf50, #388e3c);">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <span data-i18n="lineChart">المخطط الخطي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="barChart">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ff9800, #f57c00);">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <span data-i18n="barChart">المخطط الشريطي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="histogram">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #607d8b, #455a64);">
+                                <i class="fas fa-signal"></i>
+                            </div>
+                            <span data-i18n="histogram">المدرج التكراري</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="pieChart">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #e91e63, #c2185b);">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <span data-i18n="pieChart">المخطط الدائري</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Views Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="views">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-eye category-icon"></i>
+                        <span data-i18n="viewsNodes">العروض</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="imageView">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <span data-i18n="imageView">عرض الصورة</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="textView">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                                <i class="fas fa-align-left"></i>
+                            </div>
+                            <span data-i18n="textView">عرض النص</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="statisticsView">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <span data-i18n="statisticsView">عرض الإحصائيات</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="tileView">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">
+                                <i class="fas fa-th-large"></i>
+                            </div>
+                            <span data-i18n="tileView">عرض البلاطات</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="boxPlot">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <span data-i18n="boxPlot">مخطط الصندوق</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="heatmap">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                                <i class="fas fa-th"></i>
+                            </div>
+                            <span data-i18n="heatmap">الخريطة الحرارية</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="areaChart">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                                <i class="fas fa-chart-area"></i>
+                            </div>
+                            <span data-i18n="areaChart">المخطط المساحي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="radarChart">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #a855f7, #9333ea);">
+                                <i class="fas fa-spider"></i>
+                            </div>
+                            <span data-i18n="radarChart">المخطط الراداري</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="node-category">
+                    <div class="category-header" data-category="ml">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-brain category-icon"></i>
+                        <span data-i18n="mlNodes">تعلم الآلة</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="knnClassifier">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <span data-i18n="knn">K-أقرب جيران</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="decisionTree">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                                <i class="fas fa-sitemap"></i>
+                            </div>
+                            <span data-i18n="decisionTree">شجرة القرار</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="randomForest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                                <i class="fas fa-tree"></i>
+                            </div>
+                            <span data-i18n="randomForest">الغابة العشوائية</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="logisticRegression">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <i class="fas fa-chart-s-curve"></i>
+                            </div>
+                            <span data-i18n="logisticRegression">الانحدار اللوجستي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="kMeansClustering">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                                <i class="fas fa-object-group"></i>
+                            </div>
+                            <span data-i18n="kMeans">تجميع K-Means</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="naiveBayes">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <span data-i18n="naiveBayes">بايز البسيط</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="svm">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+                                <i class="fas fa-vector-square"></i>
+                            </div>
+                            <span data-i18n="svm">آلة المتجهات الداعمة</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="gradientBoosting">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #84cc16, #65a30d);">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <span data-i18n="gradientBoosting">التعزيز التدريجي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="adaBoost">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <span data-i18n="adaBoost">AdaBoost</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="pca">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #a855f7, #9333ea);">
+                                <i class="fas fa-compress-arrows-alt"></i>
+                            </div>
+                            <span data-i18n="pca">تحليل المكونات</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ML Visualization Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="mlViz">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-chart-area category-icon"></i>
+                        <span data-i18n="mlVizNodes">منحنيات ML</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="rocCurve">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <span data-i18n="rocCurve">منحنى ROC</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="prCurve">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                                <i class="fas fa-wave-square"></i>
+                            </div>
+                            <span data-i18n="prCurve">منحنى PR</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="learningCurve">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <span data-i18n="learningCurve">منحنى التعلم</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="featureImportance">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                                <i class="fas fa-sort-amount-down"></i>
+                            </div>
+                            <span data-i18n="featureImportance">أهمية المميزات</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="elbowCurve">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <span data-i18n="elbowCurve">منحنى الكوع</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="confusionHeatmap">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                                <i class="fas fa-th"></i>
+                            </div>
+                            <span data-i18n="confusionHeatmap">خريطة الارتباك</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deep Learning Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="dl">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-network-wired category-icon"></i>
+                        <span data-i18n="dlNodes">التعلم العميق</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="neuralNetwork">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <span data-i18n="neuralNetwork">الشبكة العصبية</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="modelPredictor">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">
+                                <i class="fas fa-magic"></i>
+                            </div>
+                            <span data-i18n="modelPredictor">المتنبئ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Canvas Area -->
+        <div class="canvas-container">
+            <div class="canvas-toolbar">
+                <button class="canvas-tool" id="zoomInBtn" title="تكبير">
+                    <i class="fas fa-search-plus"></i>
+                </button>
+                <span class="zoom-level" id="zoomLevel">100%</span>
+                <button class="canvas-tool" id="zoomOutBtn" title="تصغير">
+                    <i class="fas fa-search-minus"></i>
+                </button>
+                <button class="canvas-tool" id="fitViewBtn" title="ملائمة العرض">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <div class="canvas-tool-divider"></div>
+                <button class="canvas-tool" id="deleteSelectedBtn" title="حذف المحدد">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <div class="canvas" id="workflowCanvas">
+                <svg class="connections-layer" id="connectionsLayer"></svg>
+                <div class="nodes-layer" id="nodesLayer"></div>
+                <!-- Welcome Message -->
+                <div class="canvas-welcome" id="canvasWelcome">
+                    <div class="welcome-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h2 data-i18n="welcomeTitle">مرحباً بك في Salim-KNIME</h2>
+                    <p data-i18n="welcomeMessage">اسحب العقد من اللوحة الجانبية لبدء بناء سير العمل الخاص بك</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Properties Panel -->
+        <aside class="properties-panel" id="propertiesPanel">
+            <div class="panel-header">
+                <h3 data-i18n="properties">الخصائص</h3>
+                <button class="panel-close" id="closePanelBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="panel-content" id="propertiesContent">
+                <div class="empty-state">
+                    <i class="fas fa-mouse-pointer"></i>
+                    <p data-i18n="selectNode">حدد عقدة لعرض خصائصها</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Node Result Modal -->
+    <div class="modal" id="resultModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="resultModalTitle">النتائج</h3>
+                <button class="modal-close" id="closeResultModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="resultModalBody">
+                <!-- Results will be rendered here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="exportResultBtn">
+                    <i class="fas fa-download"></i>
+                    <span data-i18n="export">تصدير</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Input (Hidden) -->
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+    <input type="file" id="workflowFileInput" accept=".json" style="display: none;">
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>© 2025 salim-slimani. All rights reserved.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/statistics.js"></script>
+    <script src="js/nodes.js"></script>
+    <script src="js/canvas.js"></script>
+    <script src="js/workflow.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
