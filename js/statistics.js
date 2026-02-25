@@ -427,6 +427,1314 @@ const Statistics = {
         return { tStatistic: tStat, degreesOfFreedom: df, mean1, mean2 };
     },
 
+    // T-distribution CDF approximation
+    tCDF(t, df) {
+        if (df <= 0) return 0.5;
+        const x = df / (df + t * t);
+        const prob = 0.5 * this.incompleteBeta(df / 2, 0.5, x);
+        return t >= 0 ? 1 - prob : prob;
+    },
+
+    // Regularized incomplete beta function I_x(a,b)
+    incompleteBeta(a, b, x) {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+
+        // Use continued fraction expansion for better convergence
+        const bt = Math.exp(
+            this.logGamma(a + b) - this.logGamma(a) - this.logGamma(b) +
+            a * Math.log(x) + b * Math.log(1 - x)
+        );
+
+        // Use continued fraction when x < (a+1)/(a+b+2)
+        if (x < (a + 1) / (a + b + 2)) {
+            return bt * this.betaCF(a, b, x) / a;
+        } else {
+            return 1 - bt * this.betaCF(b, a, 1 - x) / b;
+        }
+    },
+
+    // Continued fraction for incomplete beta
+    betaCF(a, b, x) {
+        const MAXIT = 100;
+        const EPS = 1e-14;
+        const FPMIN = 1e-30;
+
+        let qab = a + b;
+        let qap = a + 1;
+        let qam = a - 1;
+        let c = 1;
+        let d = 1 - qab * x / qap;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        d = 1 / d;
+        let h = d;
+
+        for (let m = 1; m <= MAXIT; m++) {
+            let m2 = 2 * m;
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1 + aa * d;
+            if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c;
+            if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            h *= d * c;
+
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1 + aa * d;
+            if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c;
+            if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            let del = d * c;
+            h *= del;
+
+            if (Math.abs(del - 1) < EPS) break;
+        }
+        return h;
+    },
+
+    // F-distribution CDF (uses incomplete beta function)
+    fCDF(f, df1, df2) {
+        if (f <= 0 || df1 <= 0 || df2 <= 0) return 0;
+        const x = (df1 * f) / (df1 * f + df2);
+        return this.incompleteBeta(df1 / 2, df2 / 2, x);
+    },
+
+    // Independent Samples T-Test (with Welch's correction option)
+    independentTTest(group1, group2, equalVariance = true) {
+        const n1 = group1.length, n2 = group2.length;
+        if (n1 < 2 || n2 < 2) {
+            return { error: 'Insufficient data (need at least 2 samples per group)' };
+        }
+
+        const mean1 = this.mean(group1), mean2 = this.mean(group2);
+        const var1 = this.variance(group1), var2 = this.variance(group2);
+        const std1 = Math.sqrt(var1), std2 = Math.sqrt(var2);
+        const meanDiff = mean1 - mean2;
+
+        let tStatistic, df, se;
+
+        if (equalVariance) {
+            // Pooled variance (Student's t-test)
+            const pooledVar = ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2);
+            se = Math.sqrt(pooledVar * (1 / n1 + 1 / n2));
+            tStatistic = se === 0 ? 0 : meanDiff / se;
+            df = n1 + n2 - 2;
+        } else {
+            // Welch's t-test (unequal variances)
+            se = Math.sqrt(var1 / n1 + var2 / n2);
+            tStatistic = se === 0 ? 0 : meanDiff / se;
+            // Welch-Satterthwaite degrees of freedom
+            const v1 = var1 / n1, v2 = var2 / n2;
+            df = Math.pow(v1 + v2, 2) / (Math.pow(v1, 2) / (n1 - 1) + Math.pow(v2, 2) / (n2 - 1));
+        }
+
+        // Two-tailed p-value
+        const pValue = 2 * (1 - this.tCDF(Math.abs(tStatistic), df));
+        const significant = pValue < 0.05;
+
+        // Levene's test for equality of variances
+        const leveneResult = this.levenesTest(group1, group2);
+
+        // Effect size (Cohen's d)
+        const pooledStd = Math.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2));
+        const cohensD = pooledStd === 0 ? 0 : meanDiff / pooledStd;
+
+        // 95% Confidence interval for mean difference
+        const tCritical = 1.96; // Approximate for large df
+        const ciLower = meanDiff - tCritical * se;
+        const ciUpper = meanDiff + tCritical * se;
+
+        return {
+            testType: equalVariance ? 'Student' : 'Welch',
+            group1Stats: { n: n1, mean: mean1, std: std1, variance: var1 },
+            group2Stats: { n: n2, mean: mean2, std: std2, variance: var2 },
+            meanDifference: meanDiff,
+            tStatistic,
+            degreesOfFreedom: df,
+            pValue,
+            significant,
+            standardError: se,
+            cohensD,
+            effectSize: Math.abs(cohensD) < 0.2 ? 'negligible' : Math.abs(cohensD) < 0.5 ? 'small' : Math.abs(cohensD) < 0.8 ? 'medium' : 'large',
+            confidenceInterval: { lower: ciLower, upper: ciUpper, level: 0.95 },
+            leveneTest: leveneResult,
+            conclusion: significant ? 'Significant difference' : 'No significant difference'
+        };
+    },
+
+    // Levene's Test for equality of variances
+    levenesTest(group1, group2) {
+        const n1 = group1.length, n2 = group2.length;
+        const N = n1 + n2;
+        const k = 2;
+
+        const mean1 = this.mean(group1), mean2 = this.mean(group2);
+        const z1 = group1.map(x => Math.abs(x - mean1));
+        const z2 = group2.map(x => Math.abs(x - mean2));
+
+        const zMean1 = this.mean(z1), zMean2 = this.mean(z2);
+        const zMeanTotal = (n1 * zMean1 + n2 * zMean2) / N;
+
+        const ssb = n1 * Math.pow(zMean1 - zMeanTotal, 2) + n2 * Math.pow(zMean2 - zMeanTotal, 2);
+        const ssw = z1.reduce((sum, z) => sum + Math.pow(z - zMean1, 2), 0) +
+            z2.reduce((sum, z) => sum + Math.pow(z - zMean2, 2), 0);
+
+        const msb = ssb / (k - 1);
+        const msw = ssw / (N - k);
+        const fStatistic = msw === 0 ? 0 : msb / msw;
+        const pValue = 1 - this.fCDF(fStatistic, k - 1, N - k);
+
+        return {
+            fStatistic,
+            pValue,
+            equalVariances: pValue > 0.05,
+            conclusion: pValue > 0.05 ? 'Equal variances' : 'Unequal variances'
+        };
+    },
+
+    // Paired Samples T-Test
+    pairedTTest(sample1, sample2) {
+        if (sample1.length !== sample2.length) {
+            return { error: 'Samples must have equal length for paired t-test' };
+        }
+
+        const n = sample1.length;
+        if (n < 2) {
+            return { error: 'Insufficient data (need at least 2 pairs)' };
+        }
+
+        // Calculate differences
+        const differences = sample1.map((x, i) => x - sample2[i]);
+        const meanDiff = this.mean(differences);
+        const stdDiff = this.std(differences);
+        const seDiff = stdDiff / Math.sqrt(n);
+
+        const tStatistic = seDiff === 0 ? 0 : meanDiff / seDiff;
+        const df = n - 1;
+
+        // Two-tailed p-value
+        const pValue = 2 * (1 - this.tCDF(Math.abs(tStatistic), df));
+        const significant = pValue < 0.05;
+
+        const mean1 = this.mean(sample1), mean2 = this.mean(sample2);
+        const std1 = this.std(sample1), std2 = this.std(sample2);
+
+        // Effect size (Cohen's d for paired samples)
+        const cohensD = stdDiff === 0 ? 0 : meanDiff / stdDiff;
+
+        // Correlation between pairs
+        const correlation = this.correlation(sample1, sample2);
+
+        // 95% Confidence interval
+        const tCritical = 2.0; // Approximate
+        const ciLower = meanDiff - tCritical * seDiff;
+        const ciUpper = meanDiff + tCritical * seDiff;
+
+        return {
+            nPairs: n,
+            sample1Stats: { mean: mean1, std: std1 },
+            sample2Stats: { mean: mean2, std: std2 },
+            differences: {
+                mean: meanDiff,
+                std: stdDiff,
+                se: seDiff
+            },
+            tStatistic,
+            degreesOfFreedom: df,
+            pValue,
+            significant,
+            cohensD,
+            effectSize: Math.abs(cohensD) < 0.2 ? 'negligible' : Math.abs(cohensD) < 0.5 ? 'small' : Math.abs(cohensD) < 0.8 ? 'medium' : 'large',
+            correlation,
+            confidenceInterval: { lower: ciLower, upper: ciUpper, level: 0.95 },
+            conclusion: significant ? 'Significant difference' : 'No significant difference'
+        };
+    },
+
+    // Two-Way ANOVA
+    twoWayAnova(data, factor1Col, factor2Col, valueCol) {
+        // Extract unique levels for each factor
+        const factor1Levels = [...new Set(data.map(d => d[factor1Col]))].filter(x => x != null);
+        const factor2Levels = [...new Set(data.map(d => d[factor2Col]))].filter(x => x != null);
+
+        const a = factor1Levels.length; // Number of levels for factor 1
+        const b = factor2Levels.length; // Number of levels for factor 2
+
+        if (a < 2 || b < 2) {
+            return { error: 'Each factor needs at least 2 levels' };
+        }
+
+        // Organize data into cells
+        const cells = {};
+        const cellMeans = {};
+        let grandMean = 0;
+        let N = 0;
+        const allValues = [];
+
+        factor1Levels.forEach(f1 => {
+            cells[f1] = {};
+            cellMeans[f1] = {};
+            factor2Levels.forEach(f2 => {
+                const cellData = data.filter(d => d[factor1Col] === f1 && d[factor2Col] === f2)
+                    .map(d => parseFloat(d[valueCol]))
+                    .filter(v => !isNaN(v));
+                cells[f1][f2] = cellData;
+                cellMeans[f1][f2] = cellData.length > 0 ? this.mean(cellData) : 0;
+                N += cellData.length;
+                allValues.push(...cellData);
+            });
+        });
+
+        if (N < 3) {
+            return { error: 'Insufficient data for analysis' };
+        }
+
+        grandMean = this.mean(allValues);
+
+        // Calculate marginal means
+        const factor1Means = {};
+        factor1Levels.forEach(f1 => {
+            const vals = data.filter(d => d[factor1Col] === f1).map(d => parseFloat(d[valueCol])).filter(v => !isNaN(v));
+            factor1Means[f1] = vals.length > 0 ? this.mean(vals) : 0;
+        });
+
+        const factor2Means = {};
+        factor2Levels.forEach(f2 => {
+            const vals = data.filter(d => d[factor2Col] === f2).map(d => parseFloat(d[valueCol])).filter(v => !isNaN(v));
+            factor2Means[f2] = vals.length > 0 ? this.mean(vals) : 0;
+        });
+
+        // Sum of Squares
+        let SS_A = 0, SS_B = 0, SS_AB = 0, SS_E = 0, SS_T = 0;
+
+        // SS Total
+        allValues.forEach(v => { SS_T += Math.pow(v - grandMean, 2); });
+
+        // SS for Factor A (main effect)
+        factor1Levels.forEach(f1 => {
+            const n = data.filter(d => d[factor1Col] === f1).map(d => parseFloat(d[valueCol])).filter(v => !isNaN(v)).length;
+            SS_A += n * Math.pow(factor1Means[f1] - grandMean, 2);
+        });
+
+        // SS for Factor B (main effect)
+        factor2Levels.forEach(f2 => {
+            const n = data.filter(d => d[factor2Col] === f2).map(d => parseFloat(d[valueCol])).filter(v => !isNaN(v)).length;
+            SS_B += n * Math.pow(factor2Means[f2] - grandMean, 2);
+        });
+
+        // SS Error (within cells) and SS Interaction
+        factor1Levels.forEach(f1 => {
+            factor2Levels.forEach(f2 => {
+                const cellData = cells[f1][f2];
+                const cellMean = cellMeans[f1][f2];
+                const nij = cellData.length;
+
+                // SS Error
+                cellData.forEach(v => { SS_E += Math.pow(v - cellMean, 2); });
+
+                // SS Interaction
+                if (nij > 0) {
+                    SS_AB += nij * Math.pow(cellMean - factor1Means[f1] - factor2Means[f2] + grandMean, 2);
+                }
+            });
+        });
+
+        // Degrees of freedom
+        const df_A = a - 1;
+        const df_B = b - 1;
+        const df_AB = (a - 1) * (b - 1);
+        const df_E = N - a * b;
+        const df_T = N - 1;
+
+        if (df_E <= 0) {
+            return { error: 'Not enough data for error estimation (need replicates within cells)' };
+        }
+
+        // Mean Squares
+        const MS_A = SS_A / df_A;
+        const MS_B = SS_B / df_B;
+        const MS_AB = SS_AB / df_AB;
+        const MS_E = SS_E / df_E;
+
+        // F-statistics
+        const F_A = MS_E === 0 ? 0 : MS_A / MS_E;
+        const F_B = MS_E === 0 ? 0 : MS_B / MS_E;
+        const F_AB = MS_E === 0 ? 0 : MS_AB / MS_E;
+
+        // P-values
+        const p_A = 1 - this.fCDF(F_A, df_A, df_E);
+        const p_B = 1 - this.fCDF(F_B, df_B, df_E);
+        const p_AB = 1 - this.fCDF(F_AB, df_AB, df_E);
+
+        // Effect sizes (Eta-squared)
+        const eta2_A = SS_T > 0 ? SS_A / SS_T : 0;
+        const eta2_B = SS_T > 0 ? SS_B / SS_T : 0;
+        const eta2_AB = SS_T > 0 ? SS_AB / SS_T : 0;
+
+        return {
+            grandMean,
+            N,
+            factor1: {
+                name: factor1Col,
+                levels: factor1Levels,
+                means: factor1Means,
+                SS: SS_A,
+                df: df_A,
+                MS: MS_A,
+                F: F_A,
+                pValue: p_A,
+                significant: p_A < 0.05,
+                etaSquared: eta2_A
+            },
+            factor2: {
+                name: factor2Col,
+                levels: factor2Levels,
+                means: factor2Means,
+                SS: SS_B,
+                df: df_B,
+                MS: MS_B,
+                F: F_B,
+                pValue: p_B,
+                significant: p_B < 0.05,
+                etaSquared: eta2_B
+            },
+            interaction: {
+                SS: SS_AB,
+                df: df_AB,
+                MS: MS_AB,
+                F: F_AB,
+                pValue: p_AB,
+                significant: p_AB < 0.05,
+                etaSquared: eta2_AB
+            },
+            error: {
+                SS: SS_E,
+                df: df_E,
+                MS: MS_E
+            },
+            total: {
+                SS: SS_T,
+                df: df_T
+            },
+            cellMeans,
+            anovaTable: [
+                { source: factor1Col, SS: SS_A, df: df_A, MS: MS_A, F: F_A, pValue: p_A },
+                { source: factor2Col, SS: SS_B, df: df_B, MS: MS_B, F: F_B, pValue: p_B },
+                { source: 'Interaction', SS: SS_AB, df: df_AB, MS: MS_AB, F: F_AB, pValue: p_AB },
+                { source: 'Error', SS: SS_E, df: df_E, MS: MS_E, F: null, pValue: null },
+                { source: 'Total', SS: SS_T, df: df_T, MS: null, F: null, pValue: null }
+            ]
+        };
+    },
+
+    // ANCOVA (Analysis of Covariance)
+    ancova(data, groupCol, valueCol, covariateCol) {
+        const groups = [...new Set(data.map(d => d[groupCol]))].filter(x => x != null);
+        const k = groups.length;
+
+        if (k < 2) {
+            return { error: 'Need at least 2 groups for ANCOVA' };
+        }
+
+        // Extract data per group
+        const groupData = {};
+        let N = 0;
+        const allY = [], allX = [];
+
+        groups.forEach(g => {
+            const gData = data.filter(d => d[groupCol] === g);
+            const y = gData.map(d => parseFloat(d[valueCol])).filter(v => !isNaN(v));
+            const x = gData.map(d => parseFloat(d[covariateCol])).filter(v => !isNaN(v));
+
+            // Ensure paired data
+            const validPairs = [];
+            for (let i = 0; i < Math.min(y.length, x.length); i++) {
+                if (!isNaN(gData[i]?.[valueCol]) && !isNaN(gData[i]?.[covariateCol])) {
+                    validPairs.push({ y: parseFloat(gData[i][valueCol]), x: parseFloat(gData[i][covariateCol]) });
+                }
+            }
+
+            groupData[g] = {
+                y: validPairs.map(p => p.y),
+                x: validPairs.map(p => p.x),
+                n: validPairs.length
+            };
+            N += validPairs.length;
+            allY.push(...validPairs.map(p => p.y));
+            allX.push(...validPairs.map(p => p.x));
+        });
+
+        if (N < k + 2) {
+            return { error: 'Insufficient data for ANCOVA' };
+        }
+
+        const grandMeanY = this.mean(allY);
+        const grandMeanX = this.mean(allX);
+
+        // Calculate group means
+        const groupStats = {};
+        groups.forEach(g => {
+            groupStats[g] = {
+                n: groupData[g].n,
+                meanY: this.mean(groupData[g].y),
+                meanX: this.mean(groupData[g].x)
+            };
+        });
+
+        // Calculate pooled within-group regression coefficient (b_pooled)
+        let SS_xy_within = 0, SS_xx_within = 0, SS_yy_within = 0;
+
+        groups.forEach(g => {
+            const gd = groupData[g];
+            const meanX = groupStats[g].meanX;
+            const meanY = groupStats[g].meanY;
+            for (let i = 0; i < gd.n; i++) {
+                SS_xy_within += (gd.x[i] - meanX) * (gd.y[i] - meanY);
+                SS_xx_within += Math.pow(gd.x[i] - meanX, 2);
+                SS_yy_within += Math.pow(gd.y[i] - meanY, 2);
+            }
+        });
+
+        const b_pooled = SS_xx_within === 0 ? 0 : SS_xy_within / SS_xx_within;
+
+        // Calculate adjusted means
+        const adjustedMeans = {};
+        groups.forEach(g => {
+            adjustedMeans[g] = groupStats[g].meanY - b_pooled * (groupStats[g].meanX - grandMeanX);
+        });
+
+        // ANCOVA Sum of Squares
+        // SS Between (adjusted)
+        let SS_between_adj = 0;
+        groups.forEach(g => {
+            SS_between_adj += groupData[g].n * Math.pow(adjustedMeans[g] - grandMeanY, 2);
+        });
+
+        // SS Within (error, adjusted for covariate)
+        const SS_error = SS_yy_within - Math.pow(SS_xy_within, 2) / SS_xx_within;
+
+        // SS Covariate
+        let SS_total_xy = 0, SS_total_xx = 0;
+        for (let i = 0; i < allY.length; i++) {
+            SS_total_xy += (allX[i] - grandMeanX) * (allY[i] - grandMeanY);
+            SS_total_xx += Math.pow(allX[i] - grandMeanX, 2);
+        }
+        const SS_covariate = SS_total_xx === 0 ? 0 : Math.pow(SS_total_xy, 2) / SS_total_xx;
+
+        // Degrees of freedom
+        const df_between = k - 1;
+        const df_covariate = 1;
+        const df_error = N - k - 1;
+
+        if (df_error <= 0) {
+            return { error: 'Insufficient degrees of freedom' };
+        }
+
+        // Mean Squares
+        const MS_between = SS_between_adj / df_between;
+        const MS_covariate = SS_covariate / df_covariate;
+        const MS_error = SS_error / df_error;
+
+        // F-statistics
+        const F_group = MS_error === 0 ? 0 : MS_between / MS_error;
+        const F_covariate = MS_error === 0 ? 0 : MS_covariate / MS_error;
+
+        // P-values
+        const p_group = 1 - this.fCDF(F_group, df_between, df_error);
+        const p_covariate = 1 - this.fCDF(F_covariate, df_covariate, df_error);
+
+        // Effect size (Partial Eta-squared)
+        const SS_total = SS_between_adj + SS_error;
+        const partialEta2_group = SS_total > 0 ? SS_between_adj / (SS_between_adj + SS_error) : 0;
+        const partialEta2_cov = SS_total > 0 ? SS_covariate / (SS_covariate + SS_error) : 0;
+
+        return {
+            N,
+            groups,
+            groupStats,
+            adjustedMeans,
+            covariateSlope: b_pooled,
+            grandMeanY,
+            grandMeanX,
+            groupEffect: {
+                SS: SS_between_adj,
+                df: df_between,
+                MS: MS_between,
+                F: F_group,
+                pValue: p_group,
+                significant: p_group < 0.05,
+                partialEtaSquared: partialEta2_group
+            },
+            covariateEffect: {
+                SS: SS_covariate,
+                df: df_covariate,
+                MS: MS_covariate,
+                F: F_covariate,
+                pValue: p_covariate,
+                significant: p_covariate < 0.05,
+                partialEtaSquared: partialEta2_cov
+            },
+            error: {
+                SS: SS_error,
+                df: df_error,
+                MS: MS_error
+            },
+            ancovaTable: [
+                { source: groupCol, SS: SS_between_adj, df: df_between, MS: MS_between, F: F_group, pValue: p_group },
+                { source: covariateCol, SS: SS_covariate, df: df_covariate, MS: MS_covariate, F: F_covariate, pValue: p_covariate },
+                { source: 'Error', SS: SS_error, df: df_error, MS: MS_error, F: null, pValue: null }
+            ]
+        };
+    },
+
+    // ========================================
+    // Non-Parametric Tests
+    // ========================================
+
+    // Mann-Whitney U Test (non-parametric alternative to independent t-test)
+    mannWhitneyU(sample1, sample2) {
+        const n1 = sample1.length, n2 = sample2.length;
+        if (n1 < 2 || n2 < 2) {
+            return { error: 'Insufficient data (need at least 2 samples per group)' };
+        }
+
+        // Combine and rank
+        const combined = [
+            ...sample1.map(v => ({ value: v, group: 1 })),
+            ...sample2.map(v => ({ value: v, group: 2 }))
+        ].sort((a, b) => a.value - b.value);
+
+        // Assign ranks (handling ties)
+        const ranks = this.assignRanks(combined.map(c => c.value));
+        combined.forEach((c, i) => c.rank = ranks[i]);
+
+        // Sum of ranks for each group
+        const R1 = combined.filter(c => c.group === 1).reduce((s, c) => s + c.rank, 0);
+        const R2 = combined.filter(c => c.group === 2).reduce((s, c) => s + c.rank, 0);
+
+        // Calculate U statistics
+        const U1 = n1 * n2 + (n1 * (n1 + 1)) / 2 - R1;
+        const U2 = n1 * n2 + (n2 * (n2 + 1)) / 2 - R2;
+        const U = Math.min(U1, U2);
+
+        // Normal approximation for p-value (valid for n1, n2 >= 8)
+        const meanU = (n1 * n2) / 2;
+        const stdU = Math.sqrt((n1 * n2 * (n1 + n2 + 1)) / 12);
+        const z = stdU === 0 ? 0 : (U - meanU) / stdU;
+        const pValue = 2 * (1 - this.normalCDF(Math.abs(z)));
+
+        // Effect size (r = Z / sqrt(N))
+        const r = z / Math.sqrt(n1 + n2);
+
+        return {
+            n1, n2,
+            U1, U2, U,
+            R1, R2,
+            zStatistic: z,
+            pValue,
+            significant: pValue < 0.05,
+            effectSize: Math.abs(r),
+            effectSizeLabel: Math.abs(r) < 0.1 ? 'negligible' : Math.abs(r) < 0.3 ? 'small' : Math.abs(r) < 0.5 ? 'medium' : 'large',
+            median1: this.median(sample1),
+            median2: this.median(sample2),
+            conclusion: pValue < 0.05 ? 'Significant difference' : 'No significant difference'
+        };
+    },
+
+    // Assign ranks with tie handling (average rank for ties)
+    assignRanks(values) {
+        const n = values.length;
+        const ranks = new Array(n);
+        let i = 0;
+        while (i < n) {
+            let j = i;
+            // Find end of tie group
+            while (j < n - 1 && values[j] === values[j + 1]) j++;
+            // Average rank for tied values
+            const avgRank = (i + j + 2) / 2; // +2 because ranks start at 1
+            for (let k = i; k <= j; k++) ranks[k] = avgRank;
+            i = j + 1;
+        }
+        return ranks;
+    },
+
+    // Normal CDF approximation
+    normalCDF(z) {
+        const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+        const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+        const sign = z < 0 ? -1 : 1;
+        z = Math.abs(z) / Math.sqrt(2);
+        const t = 1 / (1 + p * z);
+        const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-z * z);
+        return 0.5 * (1 + sign * y);
+    },
+
+    // Wilcoxon Signed-Rank Test (non-parametric alternative to paired t-test)
+    wilcoxonSignedRank(sample1, sample2) {
+        if (sample1.length !== sample2.length) {
+            return { error: 'Samples must have equal length' };
+        }
+
+        const n = sample1.length;
+        if (n < 5) {
+            return { error: 'Insufficient data (need at least 5 pairs)' };
+        }
+
+        // Calculate differences and remove zeros
+        const diffs = [];
+        for (let i = 0; i < n; i++) {
+            const d = sample1[i] - sample2[i];
+            if (d !== 0) diffs.push({ diff: d, absDiff: Math.abs(d), sign: d > 0 ? 1 : -1 });
+        }
+
+        if (diffs.length < 5) {
+            return { error: 'Too many tied pairs (zero differences)' };
+        }
+
+        // Sort by absolute difference and assign ranks
+        diffs.sort((a, b) => a.absDiff - b.absDiff);
+        const ranks = this.assignRanks(diffs.map(d => d.absDiff));
+        diffs.forEach((d, i) => d.rank = ranks[i]);
+
+        // Sum of positive and negative ranks
+        const Wplus = diffs.filter(d => d.sign > 0).reduce((s, d) => s + d.rank, 0);
+        const Wminus = diffs.filter(d => d.sign < 0).reduce((s, d) => s + d.rank, 0);
+        const W = Math.min(Wplus, Wminus);
+        const nEffective = diffs.length;
+
+        // Normal approximation
+        const meanW = (nEffective * (nEffective + 1)) / 4;
+        const stdW = Math.sqrt((nEffective * (nEffective + 1) * (2 * nEffective + 1)) / 24);
+        const z = stdW === 0 ? 0 : (W - meanW) / stdW;
+        const pValue = 2 * (1 - this.normalCDF(Math.abs(z)));
+
+        // Effect size (r)
+        const r = z / Math.sqrt(nEffective);
+
+        return {
+            nPairs: n,
+            nEffective,
+            Wplus, Wminus, W,
+            zStatistic: z,
+            pValue,
+            significant: pValue < 0.05,
+            effectSize: Math.abs(r),
+            effectSizeLabel: Math.abs(r) < 0.1 ? 'negligible' : Math.abs(r) < 0.3 ? 'small' : Math.abs(r) < 0.5 ? 'medium' : 'large',
+            median1: this.median(sample1),
+            median2: this.median(sample2),
+            medianDiff: this.median(sample1.map((v, i) => v - sample2[i])),
+            conclusion: pValue < 0.05 ? 'Significant difference' : 'No significant difference'
+        };
+    },
+
+    // Kruskal-Wallis H Test (non-parametric alternative to one-way ANOVA)
+    kruskalWallis(data, groupCol, valueCol) {
+        const groups = [...new Set(data.map(d => d[groupCol]))].filter(g => g != null);
+        const k = groups.length;
+
+        if (k < 2) {
+            return { error: 'Need at least 2 groups' };
+        }
+
+        // Extract values per group
+        const groupData = {};
+        groups.forEach(g => {
+            groupData[g] = data.filter(d => d[groupCol] === g)
+                .map(d => parseFloat(d[valueCol]))
+                .filter(v => !isNaN(v));
+        });
+
+        // Check sample sizes
+        const N = Object.values(groupData).reduce((s, g) => s + g.length, 0);
+        if (N < 5) {
+            return { error: 'Insufficient data' };
+        }
+
+        // Combine and rank all values
+        const combined = [];
+        groups.forEach(g => {
+            groupData[g].forEach(v => combined.push({ value: v, group: g }));
+        });
+        combined.sort((a, b) => a.value - b.value);
+        const ranks = this.assignRanks(combined.map(c => c.value));
+        combined.forEach((c, i) => c.rank = ranks[i]);
+
+        // Sum of ranks per group
+        const rankSums = {};
+        const groupStats = {};
+        groups.forEach(g => {
+            const gRanks = combined.filter(c => c.group === g).map(c => c.rank);
+            const n = gRanks.length;
+            const sumR = gRanks.reduce((s, r) => s + r, 0);
+            const meanR = sumR / n;
+            rankSums[g] = sumR;
+            groupStats[g] = {
+                n,
+                sumRanks: sumR,
+                meanRank: meanR,
+                median: this.median(groupData[g])
+            };
+        });
+
+        // Calculate H statistic
+        let H = 0;
+        groups.forEach(g => {
+            const n = groupStats[g].n;
+            const R = rankSums[g];
+            H += (R * R) / n;
+        });
+        H = (12 / (N * (N + 1))) * H - 3 * (N + 1);
+
+        // Degrees of freedom
+        const df = k - 1;
+
+        // P-value (chi-squared approximation)
+        const pValue = 1 - this.chiSquaredCDF(H, df);
+
+        // Effect size (eta-squared)
+        const etaSquared = (H - k + 1) / (N - k);
+
+        return {
+            N, k,
+            H,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            etaSquared: Math.max(0, etaSquared),
+            groups,
+            groupStats,
+            conclusion: pValue < 0.05 ? 'Significant difference between groups' : 'No significant difference'
+        };
+    },
+
+    // Friedman Test (non-parametric alternative to repeated measures ANOVA)
+    friedmanTest(data, subjectCol, conditionCol, valueCol) {
+        const subjects = [...new Set(data.map(d => d[subjectCol]))].filter(s => s != null);
+        const conditions = [...new Set(data.map(d => d[conditionCol]))].filter(c => c != null);
+
+        const n = subjects.length; // Number of subjects
+        const k = conditions.length; // Number of conditions
+
+        if (n < 3 || k < 2) {
+            return { error: 'Need at least 3 subjects and 2 conditions' };
+        }
+
+        // Build matrix: rows = subjects, cols = conditions
+        const matrix = [];
+        for (const subj of subjects) {
+            const row = {};
+            for (const cond of conditions) {
+                const val = data.find(d => d[subjectCol] === subj && d[conditionCol] === cond);
+                row[cond] = val ? parseFloat(val[valueCol]) : NaN;
+            }
+            if (conditions.every(c => !isNaN(row[c]))) {
+                matrix.push({ subject: subj, values: row });
+            }
+        }
+
+        const nValid = matrix.length;
+        if (nValid < 3) {
+            return { error: 'Insufficient complete cases' };
+        }
+
+        // Rank within each subject (row)
+        const rankedMatrix = matrix.map(row => {
+            const vals = conditions.map(c => row.values[c]);
+            const ranks = this.assignRanks([...vals].sort((a, b) => a - b).indexOf);
+            // Proper ranking
+            const sorted = vals.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+            const properRanks = new Array(k);
+            const assignedRanks = this.assignRanks(sorted.map(s => s.v));
+            sorted.forEach((s, ri) => properRanks[s.i] = assignedRanks[ri]);
+            return { subject: row.subject, ranks: properRanks };
+        });
+
+        // Sum of ranks per condition
+        const rankSums = conditions.map((_, ci) =>
+            rankedMatrix.reduce((s, r) => s + r.ranks[ci], 0)
+        );
+
+        // Friedman statistic
+        const sumR2 = rankSums.reduce((s, R) => s + R * R, 0);
+        const Q = (12 / (nValid * k * (k + 1))) * sumR2 - 3 * nValid * (k + 1);
+
+        // Degrees of freedom
+        const df = k - 1;
+
+        // P-value
+        const pValue = 1 - this.chiSquaredCDF(Q, df);
+
+        // Kendall's W (effect size)
+        const kendallW = Q / (nValid * (k - 1));
+
+        return {
+            n: nValid,
+            k,
+            Q,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            kendallW,
+            conditions,
+            rankSums: conditions.reduce((obj, c, i) => { obj[c] = rankSums[i]; return obj; }, {}),
+            meanRanks: conditions.reduce((obj, c, i) => { obj[c] = rankSums[i] / nValid; return obj; }, {}),
+            conclusion: pValue < 0.05 ? 'Significant difference between conditions' : 'No significant difference'
+        };
+    },
+
+    // Chi-Square Test for Independence
+    chiSquareTest(data, var1Col, var2Col) {
+        // Create contingency table
+        const var1Values = [...new Set(data.map(d => d[var1Col]))].filter(v => v != null);
+        const var2Values = [...new Set(data.map(d => d[var2Col]))].filter(v => v != null);
+
+        if (var1Values.length < 2 || var2Values.length < 2) {
+            return { error: 'Each variable needs at least 2 categories' };
+        }
+
+        const observed = {};
+        const rowTotals = {};
+        const colTotals = {};
+        let grandTotal = 0;
+
+        // Initialize
+        var1Values.forEach(v1 => {
+            observed[v1] = {};
+            rowTotals[v1] = 0;
+            var2Values.forEach(v2 => {
+                observed[v1][v2] = 0;
+            });
+        });
+        var2Values.forEach(v2 => colTotals[v2] = 0);
+
+        // Count observations
+        data.forEach(d => {
+            const v1 = d[var1Col], v2 = d[var2Col];
+            if (v1 != null && v2 != null && observed[v1] && observed[v1][v2] !== undefined) {
+                observed[v1][v2]++;
+                rowTotals[v1]++;
+                colTotals[v2]++;
+                grandTotal++;
+            }
+        });
+
+        if (grandTotal < 20) {
+            return { error: 'Insufficient data (need at least 20 observations)' };
+        }
+
+        // Calculate expected values and chi-square
+        const expected = {};
+        let chiSquare = 0;
+        var1Values.forEach(v1 => {
+            expected[v1] = {};
+            var2Values.forEach(v2 => {
+                const exp = (rowTotals[v1] * colTotals[v2]) / grandTotal;
+                expected[v1][v2] = exp;
+                const obs = observed[v1][v2];
+                if (exp > 0) {
+                    chiSquare += Math.pow(obs - exp, 2) / exp;
+                }
+            });
+        });
+
+        // Degrees of freedom
+        const df = (var1Values.length - 1) * (var2Values.length - 1);
+
+        // P-value
+        const pValue = 1 - this.chiSquaredCDF(chiSquare, df);
+
+        // Cramér's V (effect size)
+        const minDim = Math.min(var1Values.length - 1, var2Values.length - 1);
+        const cramersV = minDim === 0 ? 0 : Math.sqrt(chiSquare / (grandTotal * minDim));
+
+        return {
+            chiSquare,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            cramersV,
+            effectSizeLabel: cramersV < 0.1 ? 'negligible' : cramersV < 0.3 ? 'small' : cramersV < 0.5 ? 'medium' : 'large',
+            var1Values,
+            var2Values,
+            observed,
+            expected,
+            rowTotals,
+            colTotals,
+            grandTotal,
+            conclusion: pValue < 0.05 ? 'Variables are associated' : 'Variables are independent'
+        };
+    },
+
+    // Spearman Rank Correlation
+    spearmanCorrelation(x, y) {
+        if (x.length !== y.length || x.length < 3) {
+            return { error: 'Samples must have equal length and at least 3 values' };
+        }
+
+        const n = x.length;
+
+        // Rank both variables
+        const xSorted = x.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+        const ySorted = y.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+
+        const xRanks = new Array(n);
+        const yRanks = new Array(n);
+
+        const xRankVals = this.assignRanks(xSorted.map(s => s.v));
+        const yRankVals = this.assignRanks(ySorted.map(s => s.v));
+
+        xSorted.forEach((s, ri) => xRanks[s.i] = xRankVals[ri]);
+        ySorted.forEach((s, ri) => yRanks[s.i] = yRankVals[ri]);
+
+        // Calculate Spearman's rho using Pearson on ranks
+        const meanXR = xRanks.reduce((s, r) => s + r, 0) / n;
+        const meanYR = yRanks.reduce((s, r) => s + r, 0) / n;
+
+        let num = 0, denX = 0, denY = 0;
+        for (let i = 0; i < n; i++) {
+            const dx = xRanks[i] - meanXR;
+            const dy = yRanks[i] - meanYR;
+            num += dx * dy;
+            denX += dx * dx;
+            denY += dy * dy;
+        }
+
+        const rho = (denX === 0 || denY === 0) ? 0 : num / Math.sqrt(denX * denY);
+
+        // Test significance using t-distribution
+        const t = rho * Math.sqrt((n - 2) / (1 - rho * rho));
+        const pValue = 2 * (1 - this.tCDF(Math.abs(t), n - 2));
+
+        return {
+            n,
+            rho,
+            tStatistic: t,
+            df: n - 2,
+            pValue,
+            significant: pValue < 0.05,
+            strength: Math.abs(rho) < 0.1 ? 'negligible' : Math.abs(rho) < 0.3 ? 'weak' : Math.abs(rho) < 0.5 ? 'moderate' : Math.abs(rho) < 0.7 ? 'strong' : 'very strong',
+            direction: rho > 0 ? 'positive' : rho < 0 ? 'negative' : 'none',
+            conclusion: pValue < 0.05 ? 'Significant correlation' : 'No significant correlation'
+        };
+    },
+
+    // ========================================
+    // Regression Diagnostic Tests
+    // ========================================
+
+    // Chi-squared CDF approximation
+    chiSquaredCDF(x, df) {
+        if (x <= 0 || df <= 0) return 0;
+        // Use incomplete gamma function approximation
+        const k = df / 2;
+        const theta = 2;
+        return this.incompleteGamma(k, x / theta) / this.gamma(k);
+    },
+
+    // Incomplete Gamma function approximation (lower)
+    incompleteGamma(a, x) {
+        if (x <= 0) return 0;
+        if (x < a + 1) {
+            // Use series representation
+            let sum = 1 / a;
+            let term = 1 / a;
+            for (let n = 1; n < 100; n++) {
+                term *= x / (a + n);
+                sum += term;
+                if (Math.abs(term) < 1e-10) break;
+            }
+            return Math.exp(-x + a * Math.log(x) - this.logGamma(a)) * sum;
+        } else {
+            // Use continued fraction
+            return this.gamma(a) - this.upperIncompleteGamma(a, x);
+        }
+    },
+
+    // Upper incomplete gamma function
+    upperIncompleteGamma(a, x) {
+        // Continued fraction approximation
+        let f = 1e-30;
+        let c = 1e-30;
+        let d = 0;
+        for (let i = 1; i < 100; i++) {
+            const an = -i * (i - a);
+            const bn = x + 2 * i + 1 - a;
+            d = bn + an * d;
+            if (Math.abs(d) < 1e-30) d = 1e-30;
+            c = bn + an / c;
+            if (Math.abs(c) < 1e-30) c = 1e-30;
+            d = 1 / d;
+            const delta = c * d;
+            f *= delta;
+            if (Math.abs(delta - 1) < 1e-10) break;
+        }
+        return Math.exp(-x + a * Math.log(x) - this.logGamma(a)) * f;
+    },
+
+    // Gamma function
+    gamma(n) {
+        return Math.exp(this.logGamma(n));
+    },
+
+    // Jarque-Bera test for normality of residuals
+    jarqueBera(residuals) {
+        const n = residuals.length;
+        if (n < 8) return { statistic: NaN, pValue: NaN, isNormal: true, message: 'Insufficient data' };
+
+        const skew = this.skewness(residuals);
+        const kurt = this.kurtosis(residuals); // This returns excess kurtosis
+
+        // Jarque-Bera statistic: JB = n/6 * (S² + (K-3)²/4)
+        // Since our kurtosis function returns excess kurtosis (K-3), we use it directly
+        const jbStat = (n / 6) * (Math.pow(skew, 2) + Math.pow(kurt, 2) / 4);
+
+        // Chi-squared distribution with 2 degrees of freedom
+        const pValue = 1 - this.chiSquaredCDF(jbStat, 2);
+        const isNormal = pValue > 0.05;
+
+        return {
+            statistic: jbStat,
+            pValue: pValue,
+            skewness: skew,
+            kurtosis: kurt,
+            isNormal: isNormal,
+            conclusion: isNormal ? 'Normal' : 'Non-Normal'
+        };
+    },
+
+    // Breusch-Godfrey test for serial correlation
+    breuschGodfrey(residuals, X, lags = 1) {
+        const n = residuals.length;
+        if (n <= lags + X[0].length + 1) {
+            return { statistic: NaN, pValue: NaN, hasSerialCorrelation: false, message: 'Insufficient data' };
+        }
+
+        // Create lagged residuals
+        const laggedResiduals = [];
+        for (let lag = 1; lag <= lags; lag++) {
+            const lagged = new Array(lag).fill(0);
+            for (let i = lag; i < n; i++) {
+                lagged.push(residuals[i - lag]);
+            }
+            laggedResiduals.push(lagged);
+        }
+
+        // Build augmented regressor matrix [X, lagged residuals]
+        const XAugmented = [];
+        for (let i = 0; i < n; i++) {
+            const row = [...X[i]];
+            for (let j = 0; j < lags; j++) {
+                row.push(laggedResiduals[j][i]);
+            }
+            XAugmented.push(row);
+        }
+
+        // Run auxiliary regression: e_t on X and lagged e
+        const auxResult = this.multipleRegression(XAugmented, residuals);
+        if (!auxResult) {
+            return { statistic: NaN, pValue: NaN, hasSerialCorrelation: false, message: 'Regression failed' };
+        }
+
+        // LM statistic = n * R² from auxiliary regression
+        const lmStat = n * auxResult.rSquared;
+
+        // Chi-squared distribution with 'lags' degrees of freedom
+        const pValue = 1 - this.chiSquaredCDF(lmStat, lags);
+        const hasSerialCorrelation = pValue < 0.05;
+
+        return {
+            statistic: lmStat,
+            pValue: pValue,
+            lags: lags,
+            auxRSquared: auxResult.rSquared,
+            hasSerialCorrelation: hasSerialCorrelation,
+            conclusion: hasSerialCorrelation ? 'Serial Correlation' : 'No Serial Correlation'
+        };
+    },
+
+    // Breusch-Pagan test for heteroskedasticity
+    breuschPagan(residuals, X) {
+        const n = residuals.length;
+        const k = X[0].length;
+        if (n <= k + 1) {
+            return { statistic: NaN, pValue: NaN, hasHeteroskedasticity: false, message: 'Insufficient data' };
+        }
+
+        // Square the residuals
+        const residualsSq = residuals.map(r => r * r);
+
+        // Regress squared residuals on X
+        const auxResult = this.multipleRegression(X, residualsSq);
+        if (!auxResult) {
+            return { statistic: NaN, pValue: NaN, hasHeteroskedasticity: false, message: 'Regression failed' };
+        }
+
+        // BP statistic = n * R² from auxiliary regression (Koenker's studentized version)
+        const bpStat = n * auxResult.rSquared;
+
+        // Chi-squared distribution with k degrees of freedom
+        const pValue = 1 - this.chiSquaredCDF(bpStat, k);
+        const hasHeteroskedasticity = pValue < 0.05;
+
+        return {
+            statistic: bpStat,
+            pValue: pValue,
+            auxRSquared: auxResult.rSquared,
+            hasHeteroskedasticity: hasHeteroskedasticity,
+            conclusion: hasHeteroskedasticity ? 'Heteroskedasticity' : 'Homoskedasticity'
+        };
+    },
+
+    // CUSUM Test for structural stability
+    cusumTest(residuals, k) {
+        const n = residuals.length;
+        if (n < k + 3) {
+            return { statistic: NaN, pValue: NaN, isStable: true, message: 'Insufficient data' };
+        }
+
+        // Calculate recursive residuals (simplified approach)
+        // Standard recursive residuals require sequential OLS which is complex
+        // Using standardized cumulative sum of residuals as approximation
+        const sigma = Math.sqrt(residuals.reduce((sum, r) => sum + r * r, 0) / (n - k - 1));
+        if (sigma === 0) {
+            return { statistic: 0, pValue: 1, isStable: true, maxCusum: 0, criticalValue: 0 };
+        }
+
+        // Standardized residuals
+        const stdResiduals = residuals.map(r => r / sigma);
+
+        // Cumulative sum
+        const cusum = [];
+        let cumSum = 0;
+        for (let t = 0; t < n; t++) {
+            cumSum += stdResiduals[t];
+            cusum.push(cumSum / Math.sqrt(n));
+        }
+
+        // Maximum absolute CUSUM
+        const maxCusum = Math.max(...cusum.map(c => Math.abs(c)));
+
+        // Critical value at 5% significance (Brownian bridge approximation)
+        // Using simplified critical value: ±0.948 for standard CUSUM
+        const criticalValue = 0.948 * Math.sqrt(n) / Math.sqrt(n);
+
+        // Alternative: using boundaries a + b*t where a ≈ 0.948, b depends on n
+        const boundaryCoef = 0.948;
+        const isStable = maxCusum <= boundaryCoef * 1.36; // 5% significance bound
+
+        return {
+            statistic: maxCusum,
+            criticalValue: boundaryCoef * 1.36,
+            cusum: cusum,
+            isStable: isStable,
+            conclusion: isStable ? 'Stable' : 'Unstable (Structural Break)'
+        };
+    },
+
+    // CUSUM of Squares Test
+    cusumSqTest(residuals, k) {
+        const n = residuals.length;
+        if (n < k + 3) {
+            return { statistic: NaN, pValue: NaN, isStable: true, message: 'Insufficient data' };
+        }
+
+        // Sum of squared residuals
+        const totalSS = residuals.reduce((sum, r) => sum + r * r, 0);
+        if (totalSS === 0) {
+            return { statistic: 0, pValue: 1, isStable: true };
+        }
+
+        // Cumulative sum of squares
+        const cusumSq = [];
+        let cumSS = 0;
+        for (let t = 0; t < n; t++) {
+            cumSS += residuals[t] * residuals[t];
+            cusumSq.push(cumSS / totalSS);
+        }
+
+        // Maximum deviation from diagonal (expected value is t/n)
+        let maxDev = 0;
+        for (let t = 0; t < n; t++) {
+            const expected = (t + 1) / n;
+            const dev = Math.abs(cusumSq[t] - expected);
+            if (dev > maxDev) maxDev = dev;
+        }
+
+        // Critical value at 5% significance (approximately 0.1486 for large n)
+        const criticalValue = 0.1486 + 0.1 / Math.sqrt(n);
+        const isStable = maxDev <= criticalValue;
+
+        return {
+            statistic: maxDev,
+            criticalValue: criticalValue,
+            cusumSq: cusumSq,
+            isStable: isStable,
+            conclusion: isStable ? 'Stable' : 'Unstable (Variance Break)'
+        };
+    },
+
+    // Ramsey RESET Test for functional form misspecification
+    ramseyReset(y, X, residuals, powers = 2) {
+        const n = y.length;
+        const k = X[0].length;
+
+        if (n <= k + powers + 1) {
+            return { statistic: NaN, pValue: NaN, isCorrect: true, message: 'Insufficient data' };
+        }
+
+        // Calculate fitted values from original regression
+        const originalResult = this.multipleRegression(X, y);
+        if (!originalResult) {
+            return { statistic: NaN, pValue: NaN, isCorrect: true, message: 'Original regression failed' };
+        }
+
+        const XwithIntercept = X.map(row => [1, ...row]);
+        const allCoefs = [originalResult.intercept, ...originalResult.coefficients];
+        const fitted = XwithIntercept.map(row =>
+            row.reduce((sum, val, i) => sum + val * allCoefs[i], 0)
+        );
+
+        // Create augmented X matrix with powers of fitted values
+        const XAugmented = X.map((row, i) => {
+            const newRow = [...row];
+            for (let p = 2; p <= powers + 1; p++) {
+                newRow.push(Math.pow(fitted[i], p));
+            }
+            return newRow;
+        });
+
+        // Run augmented regression
+        const augmentedResult = this.multipleRegression(XAugmented, y);
+        if (!augmentedResult) {
+            return { statistic: NaN, pValue: NaN, isCorrect: true, message: 'Augmented regression failed' };
+        }
+
+        // F-test for joint significance of added terms
+        const ssrRestricted = originalResult.ssRes;
+        const ssrUnrestricted = augmentedResult.ssRes;
+        const q = powers; // Number of added terms
+        const dfResidual = n - k - powers - 1;
+
+        if (dfResidual <= 0 || ssrUnrestricted <= 0) {
+            return { statistic: NaN, pValue: NaN, isCorrect: true, message: 'Invalid degrees of freedom' };
+        }
+
+        const fStat = ((ssrRestricted - ssrUnrestricted) / q) / (ssrUnrestricted / dfResidual);
+        const pValue = 1 - this.fCDF(fStat, q, dfResidual);
+        const isCorrect = pValue > 0.05;
+
+        return {
+            statistic: fStat,
+            pValue: pValue,
+            powers: powers,
+            dfNumerator: q,
+            dfDenominator: dfResidual,
+            isCorrect: isCorrect,
+            conclusion: isCorrect ? 'Correct Specification' : 'Misspecification'
+        };
+    },
+
     // ========================================
     // Advanced Regression Methods
     // ========================================
@@ -1018,14 +2326,65 @@ const Statistics = {
         // Short-run coefficients (ECM)
         const shortRun = this.ardlShortRun(model);
 
-        // Diagnostic tests
+        // Calculate residuals for diagnostic tests
+        const maxLag = model.maxLag;
+        const effectiveN = model.effectiveN;
+        const yTrimmed = y.slice(maxLag);
+
+        // Build regressor matrix (same as in ardlEstimate)
+        const regressors = [];
+        const yLags = this.createLags(y, pLag);
+        for (let i = 0; i < pLag; i++) {
+            regressors.push(yLags[i].slice(maxLag - (i + 1)));
+        }
+        for (const varName of Object.keys(X)) {
+            const qLag = effectiveQLags[varName];
+            regressors.push(X[varName].slice(maxLag)); // current
+            const xLags = this.createLags(X[varName], qLag);
+            for (let i = 0; i < xLags.length; i++) {
+                regressors.push(xLags[i].slice(maxLag - (i + 1)));
+            }
+        }
+
+        const XMatrix = [];
+        for (let i = 0; i < effectiveN; i++) {
+            XMatrix.push(regressors.map(reg => reg[i] || 0));
+        }
+
+        // Calculate residuals
+        const XwithIntercept = XMatrix.map(row => [1, ...row]);
+        const allCoefs = [model.intercept, ...model.coefficients];
+        const predicted = XwithIntercept.map(row =>
+            row.reduce((sum, val, i) => sum + val * (allCoefs[i] || 0), 0)
+        );
+        const residuals = yTrimmed.slice(0, effectiveN).map((yi, i) => yi - predicted[i]);
+        const k = XMatrix[0]?.length || 0;
+
+        // Run diagnostic tests
         const diagnostics = {
+            // Basic fit statistics
             durbinWatson: model.durbinWatson,
             rSquared: model.rSquared,
             adjRSquared: model.adjRSquared,
             fStatistic: model.fStatistic,
             fPValue: model.fPValue,
-            n: model.effectiveN
+            n: model.effectiveN,
+
+            // Normality test (Jarque-Bera)
+            jarqueBera: this.jarqueBera(residuals),
+
+            // Serial correlation test (Breusch-Godfrey LM test)
+            serialCorrelation: this.breuschGodfrey(residuals, XMatrix, 2),
+
+            // Heteroskedasticity test (Breusch-Pagan)
+            heteroskedasticity: this.breuschPagan(residuals, XMatrix),
+
+            // Structural stability tests (CUSUM)
+            cusum: this.cusumTest(residuals, k),
+            cusumSq: this.cusumSqTest(residuals, k),
+
+            // Functional form test (Ramsey RESET)
+            ramseyReset: this.ramseyReset(yTrimmed.slice(0, effectiveN), XMatrix, residuals, 2)
         };
 
         return {
@@ -4080,5 +5439,461 @@ const Statistics = {
         }
 
         return count > 0 ? totalScore / count : 0;
+    },
+
+    // ========================================
+    // Non-Parametric Tests
+    // ========================================
+
+    // Mann-Whitney U Test (Wilcoxon Rank-Sum Test)
+    mannWhitneyU(sample1, sample2) {
+        const n1 = sample1.length;
+        const n2 = sample2.length;
+
+        if (n1 < 2 || n2 < 2) {
+            return { error: 'Each sample must have at least 2 observations' };
+        }
+
+        // Combine and rank
+        const combined = [
+            ...sample1.map((v, i) => ({ value: v, group: 1, index: i })),
+            ...sample2.map((v, i) => ({ value: v, group: 2, index: i }))
+        ];
+        combined.sort((a, b) => a.value - b.value);
+
+        // Assign ranks with tie handling
+        const ranks = this.assignRanks(combined.map(c => c.value));
+        combined.forEach((item, i) => item.rank = ranks[i]);
+
+        // Sum of ranks for each group
+        const R1 = combined.filter(c => c.group === 1).reduce((sum, c) => sum + c.rank, 0);
+        const R2 = combined.filter(c => c.group === 2).reduce((sum, c) => sum + c.rank, 0);
+
+        // U statistics
+        const U1 = n1 * n2 + (n1 * (n1 + 1)) / 2 - R1;
+        const U2 = n1 * n2 + (n2 * (n2 + 1)) / 2 - R2;
+        const U = Math.min(U1, U2);
+
+        // Z approximation for large samples
+        const meanU = (n1 * n2) / 2;
+        const stdU = Math.sqrt((n1 * n2 * (n1 + n2 + 1)) / 12);
+        const z = stdU > 0 ? (U - meanU) / stdU : 0;
+        const pValue = 2 * (1 - this.normalCDF(Math.abs(z)));
+
+        // Effect size: r = Z / sqrt(N)
+        const effectSizeR = Math.abs(z) / Math.sqrt(n1 + n2);
+
+        return {
+            U1, U2, U,
+            R1, R2,
+            z,
+            pValue,
+            significant: pValue < 0.05,
+            n1, n2,
+            mean1: this.mean(sample1),
+            mean2: this.mean(sample2),
+            median1: this.median(sample1),
+            median2: this.median(sample2),
+            effectSize: effectSizeR,
+            effectInterpretation: effectSizeR < 0.1 ? 'negligible' : effectSizeR < 0.3 ? 'small' : effectSizeR < 0.5 ? 'medium' : 'large',
+            conclusion: pValue < 0.05 ? 'Significant difference between groups' : 'No significant difference'
+        };
+    },
+
+    // Wilcoxon Signed-Rank Test (for paired samples)
+    wilcoxonSignedRank(sample1, sample2) {
+        if (sample1.length !== sample2.length) {
+            return { error: 'Samples must have equal length' };
+        }
+
+        const n = sample1.length;
+        if (n < 5) {
+            return { error: 'Minimum 5 pairs required' };
+        }
+
+        // Calculate differences
+        const differences = [];
+        for (let i = 0; i < n; i++) {
+            const diff = sample1[i] - sample2[i];
+            if (diff !== 0) {
+                differences.push({ diff, absDiff: Math.abs(diff), sign: diff > 0 ? 1 : -1 });
+            }
+        }
+
+        const nNonZero = differences.length;
+        if (nNonZero < 5) {
+            return { error: 'Minimum 5 non-zero differences required' };
+        }
+
+        // Sort by absolute difference and assign ranks
+        differences.sort((a, b) => a.absDiff - b.absDiff);
+        const absValues = differences.map(d => d.absDiff);
+        const ranks = this.assignRanks(absValues);
+        differences.forEach((d, i) => d.rank = ranks[i]);
+
+        // Calculate signed ranks
+        const Wplus = differences.filter(d => d.sign === 1).reduce((sum, d) => sum + d.rank, 0);
+        const Wminus = differences.filter(d => d.sign === -1).reduce((sum, d) => sum + d.rank, 0);
+        const W = Math.min(Wplus, Wminus);
+
+        // Z approximation
+        const meanW = (nNonZero * (nNonZero + 1)) / 4;
+        const stdW = Math.sqrt((nNonZero * (nNonZero + 1) * (2 * nNonZero + 1)) / 24);
+        const z = stdW > 0 ? (W - meanW) / stdW : 0;
+        const pValue = 2 * (1 - this.normalCDF(Math.abs(z)));
+
+        // Effect size
+        const effectSizeR = Math.abs(z) / Math.sqrt(nNonZero);
+
+        return {
+            W, Wplus, Wminus,
+            z,
+            pValue,
+            significant: pValue < 0.05,
+            nPairs: n,
+            nNonZero,
+            meanDiff: this.mean(sample1.map((v, i) => v - sample2[i])),
+            medianDiff: this.median(sample1.map((v, i) => v - sample2[i])),
+            effectSize: effectSizeR,
+            effectInterpretation: effectSizeR < 0.1 ? 'negligible' : effectSizeR < 0.3 ? 'small' : effectSizeR < 0.5 ? 'medium' : 'large',
+            conclusion: pValue < 0.05 ? 'Significant difference between paired samples' : 'No significant difference'
+        };
+    },
+
+    // Kruskal-Wallis H Test (non-parametric ANOVA)
+    kruskalWallis(data, groupColumn, valueColumn) {
+        // Group the data
+        const groups = {};
+        data.forEach(row => {
+            const g = row[groupColumn];
+            const v = parseFloat(row[valueColumn]);
+            if (g != null && !isNaN(v)) {
+                if (!groups[g]) groups[g] = [];
+                groups[g].push(v);
+            }
+        });
+
+        const groupNames = Object.keys(groups);
+        const k = groupNames.length;
+
+        if (k < 2) {
+            return { error: 'At least 2 groups required' };
+        }
+
+        // Check sample sizes
+        for (const g of groupNames) {
+            if (groups[g].length < 2) {
+                return { error: `Group "${g}" must have at least 2 observations` };
+            }
+        }
+
+        // Combine all values and rank
+        const combined = [];
+        groupNames.forEach(g => {
+            groups[g].forEach(v => combined.push({ value: v, group: g }));
+        });
+        combined.sort((a, b) => a.value - b.value);
+
+        const ranks = this.assignRanks(combined.map(c => c.value));
+        combined.forEach((item, i) => item.rank = ranks[i]);
+
+        // Calculate rank sums and group stats
+        const N = combined.length;
+        const groupStats = {};
+        let sumRankSqOverN = 0;
+
+        groupNames.forEach(g => {
+            const groupRanks = combined.filter(c => c.group === g).map(c => c.rank);
+            const ni = groupRanks.length;
+            const Ri = groupRanks.reduce((a, b) => a + b, 0);
+            sumRankSqOverN += (Ri * Ri) / ni;
+            groupStats[g] = {
+                n: ni,
+                rankSum: Ri,
+                meanRank: Ri / ni,
+                median: this.median(groups[g]),
+                mean: this.mean(groups[g])
+            };
+        });
+
+        // H statistic
+        const H = ((12 / (N * (N + 1))) * sumRankSqOverN) - 3 * (N + 1);
+        const df = k - 1;
+
+        // P-value using chi-square approximation
+        const pValue = 1 - this.chiSquareCDF(H, df);
+
+        // Effect size: eta-squared
+        const etaSquared = (H - k + 1) / (N - k);
+
+        return {
+            H,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            k,
+            N,
+            groupStats,
+            etaSquared: Math.max(0, etaSquared),
+            effectInterpretation: etaSquared < 0.01 ? 'negligible' : etaSquared < 0.06 ? 'small' : etaSquared < 0.14 ? 'medium' : 'large',
+            conclusion: pValue < 0.05 ? 'Significant difference between groups' : 'No significant difference'
+        };
+    },
+
+    // Friedman Test (non-parametric repeated measures ANOVA)
+    friedmanTest(data, subjectColumn, conditionColumn, valueColumn) {
+        // Organize data by subject and condition
+        const subjects = {};
+        data.forEach(row => {
+            const subj = row[subjectColumn];
+            const cond = row[conditionColumn];
+            const val = parseFloat(row[valueColumn]);
+            if (subj != null && cond != null && !isNaN(val)) {
+                if (!subjects[subj]) subjects[subj] = {};
+                subjects[subj][cond] = val;
+            }
+        });
+
+        const subjectIds = Object.keys(subjects);
+        const conditions = [...new Set(data.map(d => d[conditionColumn]).filter(c => c != null))];
+        const n = subjectIds.length;
+        const k = conditions.length;
+
+        if (n < 2) return { error: 'At least 2 subjects required' };
+        if (k < 2) return { error: 'At least 2 conditions required' };
+
+        // Verify complete data
+        for (const subj of subjectIds) {
+            if (Object.keys(subjects[subj]).length !== k) {
+                return { error: `Incomplete data for subject "${subj}"` };
+            }
+        }
+
+        // Rank within each subject
+        const rankSums = {};
+        conditions.forEach(c => rankSums[c] = 0);
+
+        subjectIds.forEach(subj => {
+            const values = conditions.map(c => ({ cond: c, value: subjects[subj][c] }));
+            values.sort((a, b) => a.value - b.value);
+            const ranks = this.assignRanks(values.map(v => v.value));
+            values.forEach((v, i) => {
+                rankSums[v.cond] += ranks[i];
+            });
+        });
+
+        // Calculate chi-square statistic
+        let sumRankSq = 0;
+        conditions.forEach(c => {
+            sumRankSq += Math.pow(rankSums[c], 2);
+        });
+
+        const chiSquare = (12 / (n * k * (k + 1))) * sumRankSq - 3 * n * (k + 1);
+        const df = k - 1;
+        const pValue = 1 - this.chiSquareCDF(chiSquare, df);
+
+        // Kendall's W (coefficient of concordance)
+        const W = chiSquare / (n * (k - 1));
+
+        // Condition statistics
+        const conditionStats = {};
+        conditions.forEach(c => {
+            const vals = subjectIds.map(s => subjects[s][c]);
+            conditionStats[c] = {
+                n: vals.length,
+                rankSum: rankSums[c],
+                meanRank: rankSums[c] / n,
+                median: this.median(vals),
+                mean: this.mean(vals)
+            };
+        });
+
+        return {
+            chiSquare,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            kendallW: W,
+            nSubjects: n,
+            nConditions: k,
+            conditionStats,
+            conclusion: pValue < 0.05 ? 'Significant difference between conditions' : 'No significant difference'
+        };
+    },
+
+    // Chi-Square Test for Independence
+    chiSquareTest(data, var1Column, var2Column) {
+        // Build contingency table
+        const contingency = {};
+        const rowTotals = {};
+        const colTotals = {};
+        let grandTotal = 0;
+
+        data.forEach(row => {
+            const r = String(row[var1Column]);
+            const c = String(row[var2Column]);
+            if (r && c && r !== 'undefined' && c !== 'undefined') {
+                if (!contingency[r]) contingency[r] = {};
+                if (!contingency[r][c]) contingency[r][c] = 0;
+                contingency[r][c]++;
+
+                if (!rowTotals[r]) rowTotals[r] = 0;
+                rowTotals[r]++;
+
+                if (!colTotals[c]) colTotals[c] = 0;
+                colTotals[c]++;
+
+                grandTotal++;
+            }
+        });
+
+        const rows = Object.keys(contingency);
+        const cols = Object.keys(colTotals);
+        const nRows = rows.length;
+        const nCols = cols.length;
+
+        if (nRows < 2 || nCols < 2) {
+            return { error: 'Each variable must have at least 2 categories' };
+        }
+
+        // Calculate expected frequencies and chi-square
+        let chiSquare = 0;
+        const expectedTable = {};
+        const observedTable = {};
+
+        rows.forEach(r => {
+            expectedTable[r] = {};
+            observedTable[r] = {};
+            cols.forEach(c => {
+                const observed = contingency[r]?.[c] || 0;
+                const expected = (rowTotals[r] * colTotals[c]) / grandTotal;
+                expectedTable[r][c] = expected;
+                observedTable[r][c] = observed;
+                if (expected > 0) {
+                    chiSquare += Math.pow(observed - expected, 2) / expected;
+                }
+            });
+        });
+
+        const df = (nRows - 1) * (nCols - 1);
+        const pValue = 1 - this.chiSquareCDF(chiSquare, df);
+
+        // Effect sizes
+        const phi = Math.sqrt(chiSquare / grandTotal);
+        const cramersV = Math.sqrt(chiSquare / (grandTotal * (Math.min(nRows, nCols) - 1)));
+
+        return {
+            chiSquare,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            nRows, nCols,
+            N: grandTotal,
+            phi,
+            cramersV,
+            effectInterpretation: cramersV < 0.1 ? 'negligible' : cramersV < 0.3 ? 'small' : cramersV < 0.5 ? 'medium' : 'large',
+            observedTable,
+            expectedTable,
+            rowTotals,
+            colTotals,
+            rowLabels: rows,
+            colLabels: cols,
+            conclusion: pValue < 0.05 ? 'Significant association between variables' : 'No significant association'
+        };
+    },
+
+    // Spearman's Rank Correlation
+    spearmanCorrelation(x, y) {
+        const n = Math.min(x.length, y.length);
+
+        if (n < 3) {
+            return { error: 'Minimum 3 data points required' };
+        }
+
+        // Create paired data and rank each variable
+        const xRanks = this.assignRanks(x.slice(0, n));
+        const yRanks = this.assignRanks(y.slice(0, n));
+
+        // Calculate Spearman's rho using Pearson on ranks
+        let sumD2 = 0;
+        for (let i = 0; i < n; i++) {
+            sumD2 += Math.pow(xRanks[i] - yRanks[i], 2);
+        }
+
+        // If no ties, use simplified formula
+        const rho = 1 - (6 * sumD2) / (n * (n * n - 1));
+
+        // T-test for significance
+        const t = rho * Math.sqrt((n - 2) / (1 - rho * rho));
+        const df = n - 2;
+        const pValue = 2 * (1 - this.tCDF(Math.abs(t), df));
+
+        return {
+            rho,
+            n,
+            t,
+            df,
+            pValue,
+            significant: pValue < 0.05,
+            interpretation: Math.abs(rho) < 0.1 ? 'negligible' :
+                Math.abs(rho) < 0.3 ? 'weak' :
+                    Math.abs(rho) < 0.5 ? 'moderate' :
+                        Math.abs(rho) < 0.7 ? 'strong' : 'very strong',
+            direction: rho > 0 ? 'positive' : rho < 0 ? 'negative' : 'none',
+            conclusion: pValue < 0.05 ?
+                `Significant ${rho > 0 ? 'positive' : 'negative'} correlation` :
+                'No significant correlation'
+        };
+    },
+
+    // Helper: Assign ranks with tie handling (average rank method)
+    assignRanks(values) {
+        const indexed = values.map((v, i) => ({ value: v, index: i }));
+        indexed.sort((a, b) => a.value - b.value);
+
+        const ranks = new Array(values.length);
+        let i = 0;
+        while (i < indexed.length) {
+            let j = i;
+            // Find ties
+            while (j < indexed.length && indexed[j].value === indexed[i].value) {
+                j++;
+            }
+            // Average rank for ties
+            const avgRank = (i + j + 1) / 2;
+            for (let k = i; k < j; k++) {
+                ranks[indexed[k].index] = avgRank;
+            }
+            i = j;
+        }
+        return ranks;
+    },
+
+    // Chi-Square CDF approximation
+    chiSquareCDF(x, df) {
+        if (x <= 0 || df <= 0) return 0;
+        return this.gammaCDF(x / 2, df / 2);
+    },
+
+    // Gamma CDF (lower incomplete gamma function / gamma function)
+    gammaCDF(x, a) {
+        if (x <= 0) return 0;
+        if (a <= 0) return 0;
+
+        // Use series expansion for small x
+        const EPSILON = 1e-10;
+        const MAX_ITER = 100;
+
+        let sum = 0;
+        let term = 1 / a;
+        sum = term;
+
+        for (let n = 1; n < MAX_ITER; n++) {
+            term *= x / (a + n);
+            sum += term;
+            if (Math.abs(term) < EPSILON) break;
+        }
+
+        return sum * Math.exp(-x + a * Math.log(x) - this.logGamma(a));
     }
 };

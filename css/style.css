@@ -1082,3 +1082,251 @@ body {
     color: var(--text-muted);
     margin: 0;
 }
+
+/* ========================================
+   Data Entry Modal (SPSS-like)
+   ======================================== */
+.data-entry-modal {
+    width: 90vw;
+    max-width: 1200px;
+    height: 80vh;
+    max-height: 800px;
+}
+
+.data-entry-modal .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.data-entry-modal .modal-header h3 {
+    flex: 0 0 auto;
+}
+
+.data-entry-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    justify-content: center;
+}
+
+.data-entry-toolbar .toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+.data-entry-toolbar .btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+}
+
+.data-entry-toolbar .btn-sm {
+    padding: 6px 12px;
+}
+
+.data-entry-toolbar .btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.data-entry-toolbar .btn-danger:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.data-entry-body {
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+}
+
+.data-entry-grid-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: var(--bg-primary);
+}
+
+/* SPSS-like Spreadsheet Grid */
+.data-entry-grid {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: 0.875rem;
+}
+
+.data-entry-grid th,
+.data-entry-grid td {
+    border: 1px solid var(--border-color);
+    padding: 0;
+    min-width: 100px;
+    height: 32px;
+    text-align: center;
+    position: relative;
+}
+
+/* Row number column */
+.data-entry-grid th.row-num,
+.data-entry-grid td.row-num {
+    min-width: 50px;
+    max-width: 50px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+[dir="ltr"] .data-entry-grid th.row-num,
+[dir="ltr"] .data-entry-grid td.row-num {
+    left: 0;
+}
+
+[dir="rtl"] .data-entry-grid th.row-num,
+[dir="rtl"] .data-entry-grid td.row-num {
+    right: 0;
+    left: auto;
+}
+
+/* Header row */
+.data-entry-grid thead th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.data-entry-grid thead th.row-num {
+    z-index: 4;
+}
+
+/* Column header input */
+.data-entry-grid .col-header-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    padding: 4px 8px;
+    font-family: inherit;
+}
+
+.data-entry-grid .col-header-input:focus {
+    outline: none;
+    background: var(--accent-primary);
+    color: white;
+}
+
+/* Cell input */
+.data-entry-grid .cell-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: var(--bg-secondary);
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    padding: 4px 8px;
+    font-family: inherit;
+}
+
+.data-entry-grid .cell-input:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: -2px;
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.data-entry-grid .cell-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+/* Delete row button */
+.data-entry-grid .delete-row-btn {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.625rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+[dir="ltr"] .data-entry-grid .delete-row-btn {
+    right: auto;
+    left: 2px;
+}
+
+.data-entry-grid td.row-num:hover .delete-row-btn {
+    display: flex;
+}
+
+.data-entry-grid .delete-row-btn:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Delete column button */
+.data-entry-grid .delete-col-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.5rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.data-entry-grid th:hover .delete-col-btn {
+    display: flex;
+}
+
+.data-entry-grid .delete-col-btn:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Footer info */
+.data-entry-info {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+[dir="ltr"] .data-entry-info {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* Modal footer for data entry */
+.data-entry-modal .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}

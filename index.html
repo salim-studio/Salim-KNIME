@@ -218,6 +218,83 @@
                             </div>
                             <span data-i18n="panelData">تحليل بانل</span>
                         </div>
+                        <div class="node-item" draggable="true" data-node-type="independentTTest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <i class="fas fa-not-equal"></i>
+                            </div>
+                            <span data-i18n="independentTTest">اختبار T للعينات المستقلة</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="pairedTTest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <span data-i18n="pairedTTest">اختبار T للعينات المزدوجة</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="twoWayAnova">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                                <i class="fas fa-table-cells"></i>
+                            </div>
+                            <span data-i18n="twoWayAnova">تحليل التباين الثنائي</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="ancova">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                                <i class="fas fa-chart-scatter"></i>
+                            </div>
+                            <span data-i18n="ancova">تحليل التباين المشترك</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Non-Parametric Tests Category -->
+                <div class="node-category">
+                    <div class="category-header" data-category="nonparametric">
+                        <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-ranking-star category-icon"></i>
+                        <span data-i18n="nonParametricTests">الاختبارات اللامعلمية</span>
+                    </div>
+                    <div class="category-nodes">
+                        <div class="node-item" draggable="true" data-node-type="dataEntry">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                                <i class="fas fa-keyboard"></i>
+                            </div>
+                            <span data-i18n="dataEntry">إدخال البيانات</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="mannWhitneyU">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                                <i class="fas fa-not-equal"></i>
+                            </div>
+                            <span data-i18n="mannWhitneyU">Mann-Whitney U</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="wilcoxonSignedRank">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <span data-i18n="wilcoxonSignedRank">Wilcoxon</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="kruskalWallis">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <span data-i18n="kruskalWallis">Kruskal-Wallis</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="friedmanTest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                                <i class="fas fa-bars-staggered"></i>
+                            </div>
+                            <span data-i18n="friedmanTest">Friedman</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="chiSquareTest">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                                <i class="fas fa-table-cells"></i>
+                            </div>
+                            <span data-i18n="chiSquareTest">Chi-Square</span>
+                        </div>
+                        <div class="node-item" draggable="true" data-node-type="spearmanCorrelation">
+                            <div class="node-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                                <i class="fas fa-arrows-left-right"></i>
+                            </div>
+                            <span data-i18n="spearmanCorrelation">Spearman</span>
+                        </div>
                     </div>
                 </div>
 
@@ -534,8 +611,56 @@
         </div>
     </div>
 
+    <!-- Data Entry Modal (SPSS-like) -->
+    <div class="modal" id="dataEntryModal">
+        <div class="modal-overlay" onclick="closeDataEntryEditor()"></div>
+        <div class="modal-content data-entry-modal">
+            <div class="modal-header">
+                <h3 id="dataEntryModalTitle" data-i18n="dataEntry">إدخال البيانات</h3>
+                <div class="data-entry-toolbar">
+                    <button class="btn btn-sm" onclick="importDataFile()" title="استيراد ملف">
+                        <i class="fas fa-file-import"></i>
+                        <span data-i18n="importFile">استيراد</span>
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <button class="btn btn-sm" onclick="addDataColumn()" title="إضافة عمود">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="addColumn">عمود</span>
+                    </button>
+                    <button class="btn btn-sm" onclick="addDataRow()" title="إضافة صف">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="addRow">صف</span>
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <button class="btn btn-sm btn-danger" onclick="clearDataEntry()" title="مسح الكل">
+                        <i class="fas fa-trash"></i>
+                        <span data-i18n="clearAll">مسح</span>
+                    </button>
+                </div>
+                <button class="modal-close" onclick="closeDataEntryEditor()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body data-entry-body">
+                <div class="data-entry-grid-container">
+                    <table class="data-entry-grid" id="dataEntryGrid">
+                        <!-- Grid will be rendered by JavaScript -->
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="data-entry-info" id="dataEntryInfo"></span>
+                <button class="btn btn-primary" onclick="saveDataEntry()">
+                    <i class="fas fa-save"></i>
+                    <span data-i18n="save">حفظ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- File Input (Hidden) -->
     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+    <input type="file" id="dataEntryFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
     <input type="file" id="workflowFileInput" accept=".json" style="display: none;">
 
     <!-- Footer -->

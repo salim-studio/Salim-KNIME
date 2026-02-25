@@ -277,6 +277,344 @@ const NodeTypes = {
         }
     },
 
+    // Independent Samples T-Test
+    independentTTest: {
+        name: 'independentTTest', category: 'statistics',
+        icon: 'fa-not-equal', color: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        inputs: ['data'], outputs: ['independentTTest'],
+        config: {
+            valueColumn: '',
+            groupColumn: '',
+            equalVariance: true
+        },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.valueColumn || !config.groupColumn) throw new Error('Select value and group columns');
+
+            const groups = [...new Set(inputs.data.data.map(row => row[config.groupColumn]))].filter(g => g != null);
+            if (groups.length !== 2) throw new Error('Group column must have exactly 2 groups');
+
+            const group1 = inputs.data.data.filter(row => row[config.groupColumn] === groups[0])
+                .map(row => parseFloat(row[config.valueColumn]))
+                .filter(v => !isNaN(v));
+            const group2 = inputs.data.data.filter(row => row[config.groupColumn] === groups[1])
+                .map(row => parseFloat(row[config.valueColumn]))
+                .filter(v => !isNaN(v));
+
+            const result = Statistics.independentTTest(group1, group2, config.equalVariance);
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                valueColumn: config.valueColumn,
+                groupColumn: config.groupColumn,
+                group1Name: groups[0],
+                group2Name: groups[1],
+                viewType: 'independentTTest'
+            };
+        }
+    },
+
+    // Paired Samples T-Test
+    pairedTTest: {
+        name: 'pairedTTest', category: 'statistics',
+        icon: 'fa-link', color: 'linear-gradient(135deg, #ec4899, #db2777)',
+        inputs: ['data'], outputs: ['pairedTTest'],
+        config: {
+            sample1Column: '',
+            sample2Column: ''
+        },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.sample1Column || !config.sample2Column) throw new Error('Select both sample columns');
+
+            const sample1 = inputs.data.data.map(row => parseFloat(row[config.sample1Column])).filter(v => !isNaN(v));
+            const sample2 = inputs.data.data.map(row => parseFloat(row[config.sample2Column])).filter(v => !isNaN(v));
+
+            // Ensure equal length
+            const minLen = Math.min(sample1.length, sample2.length);
+            const result = Statistics.pairedTTest(sample1.slice(0, minLen), sample2.slice(0, minLen));
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                sample1Column: config.sample1Column,
+                sample2Column: config.sample2Column,
+                viewType: 'pairedTTest'
+            };
+        }
+    },
+
+    // Two-Way ANOVA
+    twoWayAnova: {
+        name: 'twoWayAnova', category: 'statistics',
+        icon: 'fa-table-cells', color: 'linear-gradient(135deg, #f97316, #ea580c)',
+        inputs: ['data'], outputs: ['twoWayAnova'],
+        config: {
+            valueColumn: '',
+            factor1Column: '',
+            factor2Column: ''
+        },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.valueColumn || !config.factor1Column || !config.factor2Column) {
+                throw new Error('Select value and both factor columns');
+            }
+
+            const result = Statistics.twoWayAnova(
+                inputs.data.data,
+                config.factor1Column,
+                config.factor2Column,
+                config.valueColumn
+            );
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                valueColumn: config.valueColumn,
+                factor1Column: config.factor1Column,
+                factor2Column: config.factor2Column,
+                viewType: 'twoWayAnova'
+            };
+        }
+    },
+
+    // ANCOVA (Analysis of Covariance)
+    ancova: {
+        name: 'ancova', category: 'statistics',
+        icon: 'fa-chart-scatter', color: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+        inputs: ['data'], outputs: ['ancova'],
+        config: {
+            valueColumn: '',
+            groupColumn: '',
+            covariateColumn: ''
+        },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.valueColumn || !config.groupColumn || !config.covariateColumn) {
+                throw new Error('Select value, group, and covariate columns');
+            }
+
+            const result = Statistics.ancova(
+                inputs.data.data,
+                config.groupColumn,
+                config.valueColumn,
+                config.covariateColumn
+            );
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                valueColumn: config.valueColumn,
+                groupColumn: config.groupColumn,
+                covariateColumn: config.covariateColumn,
+                viewType: 'ancova'
+            };
+        }
+    },
+
+    // ========================================
+    // Non-Parametric Tests
+    // ========================================
+
+    // Manual Data Entry Node
+    dataEntry: {
+        name: 'dataEntry', category: 'io',
+        icon: 'fa-keyboard', color: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+        inputs: [], outputs: ['data'],
+        config: {
+            columns: ['Variable1', 'Variable2'],
+            data: [],
+            rows: 10
+        },
+        execute: async function (inputs, config) {
+            const data = config.data || [];
+            const columns = config.columns || ['Variable1', 'Variable2'];
+            return { data, columns, viewType: 'table' };
+        }
+    },
+
+    // Mann-Whitney U Test
+    mannWhitneyU: {
+        name: 'mannWhitneyU', category: 'nonparametric',
+        icon: 'fa-not-equal', color: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        inputs: ['data'], outputs: ['mannwhitney'],
+        config: { valueColumn: '', groupColumn: '' },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.valueColumn || !config.groupColumn) {
+                throw new Error('Select value and group columns');
+            }
+
+            const data = inputs.data.data;
+            const groups = [...new Set(data.map(d => d[config.groupColumn]))].filter(g => g != null);
+
+            if (groups.length !== 2) {
+                throw new Error('Exactly 2 groups required');
+            }
+
+            const group1 = data.filter(d => d[config.groupColumn] === groups[0])
+                .map(d => parseFloat(d[config.valueColumn]))
+                .filter(v => !isNaN(v));
+            const group2 = data.filter(d => d[config.groupColumn] === groups[1])
+                .map(d => parseFloat(d[config.valueColumn]))
+                .filter(v => !isNaN(v));
+
+            const result = Statistics.mannWhitneyU(group1, group2);
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                valueColumn: config.valueColumn,
+                groupColumn: config.groupColumn,
+                groupNames: groups,
+                viewType: 'mannWhitneyU'
+            };
+        }
+    },
+
+    // Wilcoxon Signed-Rank Test
+    wilcoxonSignedRank: {
+        name: 'wilcoxonSignedRank', category: 'nonparametric',
+        icon: 'fa-link', color: 'linear-gradient(135deg, #ec4899, #db2777)',
+        inputs: ['data'], outputs: ['wilcoxon'],
+        config: { column1: '', column2: '' },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.column1 || !config.column2) {
+                throw new Error('Select both columns');
+            }
+
+            const sample1 = inputs.data.data.map(d => parseFloat(d[config.column1])).filter(v => !isNaN(v));
+            const sample2 = inputs.data.data.map(d => parseFloat(d[config.column2])).filter(v => !isNaN(v));
+
+            const result = Statistics.wilcoxonSignedRank(sample1, sample2);
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                column1: config.column1,
+                column2: config.column2,
+                viewType: 'wilcoxonSignedRank'
+            };
+        }
+    },
+
+    // Kruskal-Wallis Test
+    kruskalWallis: {
+        name: 'kruskalWallis', category: 'nonparametric',
+        icon: 'fa-layer-group', color: 'linear-gradient(135deg, #f97316, #ea580c)',
+        inputs: ['data'], outputs: ['kruskalwallis'],
+        config: { valueColumn: '', groupColumn: '' },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.valueColumn || !config.groupColumn) {
+                throw new Error('Select value and group columns');
+            }
+
+            const result = Statistics.kruskalWallis(
+                inputs.data.data,
+                config.groupColumn,
+                config.valueColumn
+            );
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                valueColumn: config.valueColumn,
+                groupColumn: config.groupColumn,
+                viewType: 'kruskalWallis'
+            };
+        }
+    },
+
+    // Friedman Test
+    friedmanTest: {
+        name: 'friedmanTest', category: 'nonparametric',
+        icon: 'fa-table-list', color: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+        inputs: ['data'], outputs: ['friedman'],
+        config: { subjectColumn: '', conditionColumn: '', valueColumn: '' },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.subjectColumn || !config.conditionColumn || !config.valueColumn) {
+                throw new Error('Select subject, condition, and value columns');
+            }
+
+            const result = Statistics.friedmanTest(
+                inputs.data.data,
+                config.subjectColumn,
+                config.conditionColumn,
+                config.valueColumn
+            );
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                subjectColumn: config.subjectColumn,
+                conditionColumn: config.conditionColumn,
+                valueColumn: config.valueColumn,
+                viewType: 'friedmanTest'
+            };
+        }
+    },
+
+    // Chi-Square Test
+    chiSquareTest: {
+        name: 'chiSquareTest', category: 'nonparametric',
+        icon: 'fa-th', color: 'linear-gradient(135deg, #22c55e, #16a34a)',
+        inputs: ['data'], outputs: ['chisquare'],
+        config: { variable1Column: '', variable2Column: '' },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.variable1Column || !config.variable2Column) {
+                throw new Error('Select both variable columns');
+            }
+
+            const result = Statistics.chiSquareTest(
+                inputs.data.data,
+                config.variable1Column,
+                config.variable2Column
+            );
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                variable1Column: config.variable1Column,
+                variable2Column: config.variable2Column,
+                viewType: 'chiSquareTest'
+            };
+        }
+    },
+
+    // Spearman Correlation
+    spearmanCorrelation: {
+        name: 'spearmanCorrelation', category: 'nonparametric',
+        icon: 'fa-chart-line', color: 'linear-gradient(135deg, #a855f7, #9333ea)',
+        inputs: ['data'], outputs: ['spearman'],
+        config: { xColumn: '', yColumn: '' },
+        execute: async function (inputs, config) {
+            if (!inputs.data) throw new Error('No input data');
+            if (!config.xColumn || !config.yColumn) {
+                throw new Error('Select both columns');
+            }
+
+            const x = inputs.data.data.map(d => parseFloat(d[config.xColumn])).filter(v => !isNaN(v));
+            const y = inputs.data.data.map(d => parseFloat(d[config.yColumn])).filter(v => !isNaN(v));
+
+            // Ensure equal length
+            const minLen = Math.min(x.length, y.length);
+            const result = Statistics.spearmanCorrelation(x.slice(0, minLen), y.slice(0, minLen));
+            if (result.error) throw new Error(result.error);
+
+            return {
+                ...result,
+                xColumn: config.xColumn,
+                yColumn: config.yColumn,
+                viewType: 'spearmanCorrelation'
+            };
+        }
+    },
+
     // Multiple Regression with method selection and transformations
     multipleRegression: {
         name: 'multipleRegression', category: 'statistics',
@@ -400,6 +738,21 @@ const NodeTypes = {
             const result = Statistics.advancedRegression(X, y, config.method, Z);
             if (!result) throw new Error('Regression failed');
 
+            // Calculate residuals for diagnostic tests
+            const XwithIntercept = X.map(row => [1, ...row]);
+            const allCoefs = [result.intercept, ...result.coefficients];
+            const predicted = XwithIntercept.map(row =>
+                row.reduce((sum, val, i) => sum + val * allCoefs[i], 0)
+            );
+            const residuals = y.map((yi, i) => yi - predicted[i]);
+
+            // Run diagnostic tests
+            const diagnostics = {
+                jarqueBera: Statistics.jarqueBera(residuals),
+                serialCorrelation: Statistics.breuschGodfrey(residuals, X, 2),
+                heteroskedasticity: Statistics.breuschPagan(residuals, X)
+            };
+
             // Build regression equation
             let yLabel = config.dependent;
             if (config.dependentTransform && config.dependentTransform !== 'none') {
@@ -428,6 +781,7 @@ const NodeTypes = {
 
             return {
                 ...result,
+                diagnostics,
                 dependent: config.dependent,
                 dependentTransform: config.dependentTransform,
                 dependentDiff: config.dependentDiff,

@@ -1005,6 +1005,297 @@ function showNodeProperties(node) {
         </div>`;
     }
 
+    // Independent Samples T-Test
+    if (node.type === 'independentTTest') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('valueColumn')}</label>
+            <select onchange="updateNodeConfig('valueColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.valueColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('groupColumn')}</label>
+            <select onchange="updateNodeConfig('groupColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.groupColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label><input type="checkbox" ${node.config.equalVariance !== false ? 'checked' : ''} onchange="updateNodeConfig('equalVariance', this.checked)"> ${t('equalVariances')}</label>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('independentTTestInfo')}
+            </p>
+        </div>`;
+    }
+
+    // Paired Samples T-Test
+    if (node.type === 'pairedTTest') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('sample1')}</label>
+            <select onchange="updateNodeConfig('sample1Column', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.sample1Column === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('sample2')}</label>
+            <select onchange="updateNodeConfig('sample2Column', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.sample2Column === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('pairedTTestInfo')}
+            </p>
+        </div>`;
+    }
+
+    // Two-Way ANOVA
+    if (node.type === 'twoWayAnova') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('valueColumn')}</label>
+            <select onchange="updateNodeConfig('valueColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.valueColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('factor1')} (${t('groupColumn')})</label>
+            <select onchange="updateNodeConfig('factor1Column', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.factor1Column === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('factor2')} (${t('groupColumn')})</label>
+            <select onchange="updateNodeConfig('factor2Column', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.factor2Column === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('twoWayAnovaInfo')}
+            </p>
+        </div>`;
+    }
+
+    // ANCOVA
+    if (node.type === 'ancova') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('valueColumn')} (${t('dependentVar')})</label>
+            <select onchange="updateNodeConfig('valueColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.valueColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('groupColumn')}</label>
+            <select onchange="updateNodeConfig('groupColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.groupColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('covariate')}</label>
+            <select onchange="updateNodeConfig('covariateColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.covariateColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('ancovaInfo')}
+            </p>
+        </div>`;
+    }
+
+    // ===== Non-Parametric Tests Property Panels =====
+
+    // Data Entry Node
+    if (node.type === 'dataEntry') {
+        const columns = node.config.columns || ['Variable1', 'Variable2'];
+        const data = node.config.data || [];
+        const rows = node.config.rows || 10;
+
+        html += `<div class="property-item">
+            <label>${t('selectColumns')}</label>
+            <input type="text" value="${columns.join(',')}" 
+                onchange="updateNodeConfig('columns', this.value.split(',').map(c=>c.trim()))" 
+                placeholder="Variable1, Variable2">
+            <small style="color:var(--text-secondary)">${t('separateByComma') || 'Separate column names with commas'}</small>
+        </div>
+        <div class="property-item">
+            <label>${t('maxRows') || 'Rows'}</label>
+            <input type="number" min="1" max="100" value="${rows}" 
+                onchange="updateNodeConfig('rows', parseInt(this.value))">
+        </div>
+        <div class="property-item">
+            <button class="btn" id="editDataBtn" data-node-id="${node.id}" style="width:100%">
+                <i class="fas fa-edit"></i> ${t('editData') || 'Edit Data'}
+            </button>
+        </div>`;
+    }
+
+    // Mann-Whitney U Test
+    if (node.type === 'mannWhitneyU') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('valueColumn')}</label>
+            <select onchange="updateNodeConfig('valueColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.valueColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('groupColumn')}</label>
+            <select onchange="updateNodeConfig('groupColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.groupColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('mannWhitneyInfo') || 'Non-parametric alternative to independent t-test'}
+            </p>
+        </div>`;
+    }
+
+    // Wilcoxon Signed-Rank Test
+    if (node.type === 'wilcoxonSignedRank') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('sample1')} (${t('column1') || 'Column 1'})</label>
+            <select onchange="updateNodeConfig('column1', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.column1 === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('sample2')} (${t('column2') || 'Column 2'})</label>
+            <select onchange="updateNodeConfig('column2', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.column2 === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('wilcoxonInfo') || 'Non-parametric alternative to paired t-test'}
+            </p>
+        </div>`;
+    }
+
+    // Kruskal-Wallis Test
+    if (node.type === 'kruskalWallis') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('valueColumn')}</label>
+            <select onchange="updateNodeConfig('valueColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.valueColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('groupColumn')}</label>
+            <select onchange="updateNodeConfig('groupColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.groupColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('kruskalWallisInfo') || 'Non-parametric alternative to one-way ANOVA'}
+            </p>
+        </div>`;
+    }
+
+    // Friedman Test
+    if (node.type === 'friedmanTest') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('subjectColumn') || 'Subject Column'}</label>
+            <select onchange="updateNodeConfig('subjectColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.subjectColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('conditionColumn') || 'Condition Column'}</label>
+            <select onchange="updateNodeConfig('conditionColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.conditionColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('valueColumn')}</label>
+            <select onchange="updateNodeConfig('valueColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.valueColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('friedmanInfo') || 'Non-parametric alternative to repeated measures ANOVA'}
+            </p>
+        </div>`;
+    }
+
+    // Chi-Square Test
+    if (node.type === 'chiSquareTest') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('variable1') || 'Variable 1'}</label>
+            <select onchange="updateNodeConfig('variable1Column', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.variable1Column === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('variable2') || 'Variable 2'}</label>
+            <select onchange="updateNodeConfig('variable2Column', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.variable2Column === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('chiSquareInfo') || 'Test for independence between categorical variables'}
+            </p>
+        </div>`;
+    }
+
+    // Spearman Correlation
+    if (node.type === 'spearmanCorrelation') {
+        const cols = getAvailableColumns(node);
+        html += `<div class="property-item">
+            <label>${t('xAxis')} (X)</label>
+            <select onchange="updateNodeConfig('xColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.xColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <label>${t('yAxis')} (Y)</label>
+            <select onchange="updateNodeConfig('yColumn', this.value)">
+                <option value="">--</option>
+                ${cols.map(c => `<option value="${c}" ${node.config.yColumn === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+        </div>
+        <div class="property-item">
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:8px 0">
+                <i class="fas fa-info-circle"></i> ${t('spearmanInfo') || 'Non-parametric rank correlation coefficient'}
+            </p>
+        </div>`;
+    }
+
     // ===== Views Nodes Property Panels =====
     if (node.type === 'imageView') {
         const cols = getAvailableColumns(node);
@@ -1171,6 +1462,34 @@ function showNodeProperties(node) {
     </div>`;
 
     content.innerHTML = html;
+
+    // Bind event listener for Data Entry Edit button
+    const editDataBtn = document.getElementById('editDataBtn');
+    console.log('Looking for editDataBtn:', editDataBtn);
+    if (editDataBtn) {
+        editDataBtn.addEventListener('click', function () {
+            alert('Button clicked! Now opening modal...');
+            const nodeId = this.getAttribute('data-node-id');
+            console.log('Edit Data button clicked, nodeId:', nodeId);
+
+            // Check if function exists
+            if (typeof openDataEntryEditor === 'function') {
+                console.log('openDataEntryEditor is defined, calling it...');
+                try {
+                    openDataEntryEditor(nodeId);
+                } catch (e) {
+                    console.error('Error calling openDataEntryEditor:', e);
+                    alert('Error: ' + e.message);
+                }
+            } else {
+                console.error('openDataEntryEditor is NOT defined!');
+                alert('Error: openDataEntryEditor function is not defined!');
+            }
+        });
+        console.log('Event listener added to editDataBtn');
+    } else {
+        console.log('editDataBtn not found');
+    }
 }
 
 function hideNodeProperties() {
@@ -1299,6 +1618,36 @@ function showResult(result) {
     } else if (result.viewType === 'panel') {
         title.textContent = t('panelData') + ' - ' + (result.bestMethod || 'Panel Analysis');
         html = renderPanelResult(result);
+    } else if (result.viewType === 'independentTTest') {
+        title.textContent = t('independentTTest');
+        html = renderIndependentTTestResult(result);
+    } else if (result.viewType === 'pairedTTest') {
+        title.textContent = t('pairedTTest');
+        html = renderPairedTTestResult(result);
+    } else if (result.viewType === 'twoWayAnova') {
+        title.textContent = t('twoWayAnova');
+        html = renderTwoWayAnovaResult(result);
+    } else if (result.viewType === 'ancova') {
+        title.textContent = t('ancova');
+        html = renderAncovaResult(result);
+    } else if (result.viewType === 'mannWhitneyU') {
+        title.textContent = t('mannWhitneyU');
+        html = renderMannWhitneyUResult(result);
+    } else if (result.viewType === 'wilcoxonSignedRank') {
+        title.textContent = t('wilcoxonSignedRank');
+        html = renderWilcoxonSignedRankResult(result);
+    } else if (result.viewType === 'kruskalWallis') {
+        title.textContent = t('kruskalWallis');
+        html = renderKruskalWallisResult(result);
+    } else if (result.viewType === 'friedmanTest') {
+        title.textContent = t('friedmanTest');
+        html = renderFriedmanResult(result);
+    } else if (result.viewType === 'chiSquareTest') {
+        title.textContent = t('chiSquareTest');
+        html = renderChiSquareTestResult(result);
+    } else if (result.viewType === 'spearmanCorrelation') {
+        title.textContent = t('spearmanCorrelation');
+        html = renderSpearmanCorrelationResult(result);
     } else if (['scatter', 'line', 'bar', 'histogram', 'pie'].includes(result.viewType)) {
         title.textContent = t(result.viewType + 'Chart') || result.viewType;
         html = '<div class="chart-container"><canvas id="resultChart"></canvas></div>';
@@ -1447,6 +1796,489 @@ function renderTTestResult(result) {
     </table>`;
 }
 
+function renderIndependentTTestResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e' : 'color:#ef4444';
+    let html = `<div style="background:var(--bg-tertiary);padding:12px;border-radius:8px;margin-bottom:16px">
+        <strong>${t('testType')}: </strong>${result.testType === 'Student' ? t('studentTTest') : t('welchTTest')}
+    </div>`;
+
+    // Group Statistics
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('groupStatistics')}</h4>
+    <table class="result-table">
+        <thead><tr>
+            <th>${t('group')}</th>
+            <th>N</th>
+            <th>${t('mean')}</th>
+            <th>${t('std')}</th>
+            <th>${t('variance')}</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+            <td><strong>${result.group1Name || 'Group 1'}</strong></td>
+            <td>${result.group1Stats?.n || 'N/A'}</td>
+            <td>${result.group1Stats?.mean?.toFixed(4) || 'N/A'}</td>
+            <td>${result.group1Stats?.std?.toFixed(4) || 'N/A'}</td>
+            <td>${result.group1Stats?.variance?.toFixed(4) || 'N/A'}</td>
+        </tr>
+        <tr>
+            <td><strong>${result.group2Name || 'Group 2'}</strong></td>
+            <td>${result.group2Stats?.n || 'N/A'}</td>
+            <td>${result.group2Stats?.mean?.toFixed(4) || 'N/A'}</td>
+            <td>${result.group2Stats?.std?.toFixed(4) || 'N/A'}</td>
+            <td>${result.group2Stats?.variance?.toFixed(4) || 'N/A'}</td>
+        </tr>
+        </tbody>
+    </table>`;
+
+    // Test Results
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>${t('meanDifference')}</th><td>${result.meanDifference?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>T-${t('statistic')}</th><td>${result.tStatistic?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('degreesOfFreedom')}</th><td>${result.degreesOfFreedom?.toFixed(2) || 'N/A'}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('standardError')}</th><td>${result.standardError?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('cohensD')}</th><td>${result.cohensD?.toFixed(4) || 'N/A'} (${t(result.effectSize || 'small')})</td></tr>
+        <tr><th>${t('ci95')}</th><td>[${result.confidenceInterval?.lower?.toFixed(4)}, ${result.confidenceInterval?.upper?.toFixed(4)}]</td></tr>
+        </tbody>
+    </table>`;
+
+    // Levene's Test
+    if (result.leveneTest) {
+        html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('levenesTest')}</h4>
+        <table class="result-table">
+            <tbody>
+            <tr><th>F-${t('statistic')}</th><td>${result.leveneTest.fStatistic?.toFixed(4) || 'N/A'}</td></tr>
+            <tr><th>P-${t('value')}</th><td>${result.leveneTest.pValue?.toFixed(4) || 'N/A'}</td></tr>
+            <tr><th>${t('conclusion')}</th><td>${result.leveneTest.equalVariances ? t('equalVariances') : t('unequalVariances')}</td></tr>
+            </tbody>
+        </table>`;
+    }
+
+    // Conclusion
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${result.conclusion}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderPairedTTestResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e' : 'color:#ef4444';
+
+    // Sample Statistics
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('sampleStatistics')}</h4>
+    <table class="result-table">
+        <thead><tr>
+            <th>${t('sample')}</th>
+            <th>${t('mean')}</th>
+            <th>${t('std')}</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+            <td><strong>${result.sample1Column || t('sample1')}</strong></td>
+            <td>${result.sample1Stats?.mean?.toFixed(4) || 'N/A'}</td>
+            <td>${result.sample1Stats?.std?.toFixed(4) || 'N/A'}</td>
+        </tr>
+        <tr>
+            <td><strong>${result.sample2Column || t('sample2')}</strong></td>
+            <td>${result.sample2Stats?.mean?.toFixed(4) || 'N/A'}</td>
+            <td>${result.sample2Stats?.std?.toFixed(4) || 'N/A'}</td>
+        </tr>
+        </tbody>
+    </table>`;
+
+    // Paired Differences
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('pairedDifferences')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>${t('meanDifference')}</th><td>${result.differences?.mean?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('std')}</th><td>${result.differences?.std?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('standardError')}</th><td>${result.differences?.se?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('correlation')}</th><td>${result.correlation?.toFixed(4) || 'N/A'}</td></tr>
+        </tbody>
+    </table>`;
+
+    // Test Results
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>${t('pairs')}</th><td>${result.nPairs || 'N/A'}</td></tr>
+        <tr><th>T-${t('statistic')}</th><td>${result.tStatistic?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('degreesOfFreedom')}</th><td>${result.degreesOfFreedom || 'N/A'}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4) || 'N/A'}</td></tr>
+        <tr><th>${t('cohensD')}</th><td>${result.cohensD?.toFixed(4) || 'N/A'} (${t(result.effectSize || 'small')})</td></tr>
+        <tr><th>${t('ci95')}</th><td>[${result.confidenceInterval?.lower?.toFixed(4)}, ${result.confidenceInterval?.upper?.toFixed(4)}]</td></tr>
+        </tbody>
+    </table>`;
+
+    // Conclusion
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${result.conclusion}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderTwoWayAnovaResult(result) {
+    // ANOVA Table
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('anovaTable')}</h4>
+    <table class="result-table">
+        <thead><tr>
+            <th>${t('source')}</th>
+            <th>SS</th>
+            <th>df</th>
+            <th>MS</th>
+            <th>F</th>
+            <th>P-${t('value')}</th>
+            <th>η²</th>
+        </tr></thead>
+        <tbody>`;
+
+    const sources = [
+        { name: result.factor1?.name || 'Factor 1', data: result.factor1 },
+        { name: result.factor2?.name || 'Factor 2', data: result.factor2 },
+        { name: t('interaction'), data: result.interaction }
+    ];
+
+    sources.forEach(src => {
+        if (src.data) {
+            const sigStyle = src.data.pValue < 0.05 ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+            html += `<tr>
+                <td><strong>${src.name}</strong></td>
+                <td>${src.data.SS?.toFixed(4) || 'N/A'}</td>
+                <td>${src.data.df || 'N/A'}</td>
+                <td>${src.data.MS?.toFixed(4) || 'N/A'}</td>
+                <td>${src.data.F?.toFixed(4) || 'N/A'}</td>
+                <td style="${sigStyle}">${src.data.pValue?.toFixed(4) || 'N/A'}</td>
+                <td>${src.data.etaSquared?.toFixed(4) || 'N/A'}</td>
+            </tr>`;
+        }
+    });
+
+    html += `<tr style="background:var(--bg-tertiary)">
+        <td><strong>${t('error')}</strong></td>
+        <td>${result.error?.SS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.error?.df || 'N/A'}</td>
+        <td>${result.error?.MS?.toFixed(4) || 'N/A'}</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+    </tr>
+    <tr style="background:var(--bg-secondary)">
+        <td><strong>${t('total')}</strong></td>
+        <td>${result.total?.SS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.total?.df || 'N/A'}</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+    </tr>
+    </tbody></table>`;
+
+    // Summary
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:var(--bg-tertiary)">
+        <div><strong>${t('grandMean')}:</strong> ${result.grandMean?.toFixed(4) || 'N/A'}</div>
+        <div><strong>N:</strong> ${result.N || 'N/A'}</div>
+    </div>`;
+
+    // Significance Summary
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('significanceTest')} (α = 0.05)</h4>
+    <ul style="margin:0;padding-left:20px">
+        <li>${result.factor1?.name}: ${result.factor1?.significant ? '✓ ' + t('significant') : '✗ ' + t('notSignificant')}</li>
+        <li>${result.factor2?.name}: ${result.factor2?.significant ? '✓ ' + t('significant') : '✗ ' + t('notSignificant')}</li>
+        <li>${t('interaction')}: ${result.interaction?.significant ? '✓ ' + t('significant') : '✗ ' + t('notSignificant')}</li>
+    </ul>`;
+
+    return html;
+}
+
+function renderAncovaResult(result) {
+    // ANCOVA Table
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('ancovaTable')}</h4>
+    <table class="result-table">
+        <thead><tr>
+            <th>${t('source')}</th>
+            <th>SS</th>
+            <th>df</th>
+            <th>MS</th>
+            <th>F</th>
+            <th>P-${t('value')}</th>
+            <th>η²p</th>
+        </tr></thead>
+        <tbody>`;
+
+    // Group effect
+    const grpSig = result.groupEffect?.pValue < 0.05 ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+    html += `<tr>
+        <td><strong>${result.groupColumn || t('group')}</strong></td>
+        <td>${result.groupEffect?.SS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.groupEffect?.df || 'N/A'}</td>
+        <td>${result.groupEffect?.MS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.groupEffect?.F?.toFixed(4) || 'N/A'}</td>
+        <td style="${grpSig}">${result.groupEffect?.pValue?.toFixed(4) || 'N/A'}</td>
+        <td>${result.groupEffect?.partialEtaSquared?.toFixed(4) || 'N/A'}</td>
+    </tr>`;
+
+    // Covariate effect
+    const covSig = result.covariateEffect?.pValue < 0.05 ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+    html += `<tr>
+        <td><strong>${result.covariateColumn || t('covariate')}</strong></td>
+        <td>${result.covariateEffect?.SS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.covariateEffect?.df || 'N/A'}</td>
+        <td>${result.covariateEffect?.MS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.covariateEffect?.F?.toFixed(4) || 'N/A'}</td>
+        <td style="${covSig}">${result.covariateEffect?.pValue?.toFixed(4) || 'N/A'}</td>
+        <td>${result.covariateEffect?.partialEtaSquared?.toFixed(4) || 'N/A'}</td>
+    </tr>`;
+
+    // Error
+    html += `<tr style="background:var(--bg-tertiary)">
+        <td><strong>${t('error')}</strong></td>
+        <td>${result.error?.SS?.toFixed(4) || 'N/A'}</td>
+        <td>${result.error?.df || 'N/A'}</td>
+        <td>${result.error?.MS?.toFixed(4) || 'N/A'}</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+    </tr>
+    </tbody></table>`;
+
+    // Adjusted Means
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('adjustedMeans')}</h4>
+    <table class="result-table">
+        <thead><tr><th>${t('group')}</th><th>N</th><th>${t('observedMean')}</th><th>${t('adjustedMean')}</th></tr></thead>
+        <tbody>`;
+
+    result.groups?.forEach(g => {
+        html += `<tr>
+            <td><strong>${g}</strong></td>
+            <td>${result.groupStats?.[g]?.n || 'N/A'}</td>
+            <td>${result.groupStats?.[g]?.meanY?.toFixed(4) || 'N/A'}</td>
+            <td>${result.adjustedMeans?.[g]?.toFixed(4) || 'N/A'}</td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+
+    // Covariate Slope
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:var(--bg-tertiary)">
+        <div><strong>${t('covariateSlope')}:</strong> ${result.covariateSlope?.toFixed(4) || 'N/A'}</div>
+        <div><strong>N:</strong> ${result.N || 'N/A'}</div>
+    </div>`;
+
+    // Conclusion
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('conclusions')} (α = 0.05)</h4>
+    <ul style="margin:0;padding-left:20px">
+        <li>${t('groupEffect')}: ${result.groupEffect?.significant ? '✓ ' + t('significant') : '✗ ' + t('notSignificant')}</li>
+        <li>${t('covariateEffect')}: ${result.covariateEffect?.significant ? '✓ ' + t('significant') : '✗ ' + t('notSignificant')}</li>
+    </ul>`;
+
+    return html;
+}
+
+// ===== Non-Parametric Test Render Functions =====
+
+function renderMannWhitneyUResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('groupStatistics')}</h4>
+    <table class="result-table">
+        <thead><tr><th>${t('group')}</th><th>N</th><th>${t('median')}</th><th>${t('sumRanks') || 'Sum Ranks'}</th></tr></thead>
+        <tbody>
+        <tr><td>${result.groupNames?.[0] || 'Group 1'}</td><td>${result.n1}</td><td>${result.median1?.toFixed(4)}</td><td>${result.R1?.toFixed(2)}</td></tr>
+        <tr><td>${result.groupNames?.[1] || 'Group 2'}</td><td>${result.n2}</td><td>${result.median2?.toFixed(4)}</td><td>${result.R2?.toFixed(2)}</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>U</th><td>${result.U?.toFixed(2)}</td></tr>
+        <tr><th>Z</th><td>${result.zStatistic?.toFixed(4)}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4)}</td></tr>
+        <tr><th>${t('effectSize') || 'Effect Size'} (r)</th><td>${result.effectSize?.toFixed(4)} (${t(result.effectSizeLabel)})</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${t(result.conclusion?.includes('Significant') ? 'significant' : 'notSignificant')}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderWilcoxonSignedRankResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('sampleStatistics')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>${t('sample1')}</th><td>${t('median')}: ${result.median1?.toFixed(4)}</td></tr>
+        <tr><th>${t('sample2')}</th><td>${t('median')}: ${result.median2?.toFixed(4)}</td></tr>
+        <tr><th>${t('medianDiff') || 'Median Difference'}</th><td>${result.medianDiff?.toFixed(4)}</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>${t('pairs')}</th><td>${result.nPairs} (${result.nEffective} ${t('effective') || 'effective'})</td></tr>
+        <tr><th>W+</th><td>${result.Wplus?.toFixed(2)}</td></tr>
+        <tr><th>W-</th><td>${result.Wminus?.toFixed(2)}</td></tr>
+        <tr><th>W</th><td>${result.W?.toFixed(2)}</td></tr>
+        <tr><th>Z</th><td>${result.zStatistic?.toFixed(4)}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4)}</td></tr>
+        <tr><th>${t('effectSize') || 'Effect Size'} (r)</th><td>${result.effectSize?.toFixed(4)} (${t(result.effectSizeLabel)})</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${t(result.conclusion?.includes('Significant') ? 'significant' : 'notSignificant')}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderKruskalWallisResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('groupStatistics')}</h4>
+    <table class="result-table">
+        <thead><tr><th>${t('group')}</th><th>N</th><th>${t('median')}</th><th>${t('meanRank') || 'Mean Rank'}</th></tr></thead>
+        <tbody>`;
+
+    result.groups?.forEach(g => {
+        const stats = result.groupStats?.[g];
+        html += `<tr>
+            <td>${g}</td>
+            <td>${stats?.n}</td>
+            <td>${stats?.median?.toFixed(4)}</td>
+            <td>${stats?.meanRank?.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>H (${t('statistic')})</th><td>${result.H?.toFixed(4)}</td></tr>
+        <tr><th>${t('degreesOfFreedom')}</th><td>${result.df}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4)}</td></tr>
+        <tr><th>η² (${t('effectSize') || 'Effect Size'})</th><td>${result.etaSquared?.toFixed(4)}</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${t(result.conclusion?.includes('Significant') ? 'significant' : 'notSignificant')}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderFriedmanResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('conditionColumn') || 'Conditions'}</h4>
+    <table class="result-table">
+        <thead><tr><th>${t('condition') || 'Condition'}</th><th>${t('sumRanks') || 'Sum Ranks'}</th><th>${t('meanRank') || 'Mean Rank'}</th></tr></thead>
+        <tbody>`;
+
+    result.conditions?.forEach(c => {
+        html += `<tr>
+            <td>${c}</td>
+            <td>${result.rankSums?.[c]?.toFixed(2)}</td>
+            <td>${result.meanRanks?.[c]?.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>${t('subjects') || 'Subjects'}</th><td>${result.n}</td></tr>
+        <tr><th>χ² (${t('statistic')})</th><td>${result.Q?.toFixed(4)}</td></tr>
+        <tr><th>${t('degreesOfFreedom')}</th><td>${result.df}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4)}</td></tr>
+        <tr><th>Kendall's W</th><td>${result.kendallW?.toFixed(4)}</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${t(result.conclusion?.includes('Significant') ? 'significant' : 'notSignificant')}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderChiSquareTestResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+
+    // Contingency Table
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('contingencyTable') || 'Contingency Table'}</h4>
+    <table class="result-table">
+        <thead><tr><th></th>${result.var2Values?.map(v => `<th>${v}</th>`).join('')}<th>${t('total')}</th></tr></thead>
+        <tbody>`;
+
+    result.var1Values?.forEach(v1 => {
+        html += `<tr><th>${v1}</th>`;
+        result.var2Values?.forEach(v2 => {
+            html += `<td>${result.observed?.[v1]?.[v2] || 0}</td>`;
+        });
+        html += `<td><strong>${result.rowTotals?.[v1] || 0}</strong></td></tr>`;
+    });
+
+    html += `<tr><th>${t('total')}</th>`;
+    result.var2Values?.forEach(v2 => {
+        html += `<td><strong>${result.colTotals?.[v2] || 0}</strong></td>`;
+    });
+    html += `<td><strong>${result.grandTotal || 0}</strong></td></tr>`;
+
+    html += `</tbody></table>`;
+
+    // Test Results
+    html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('testResults')}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>χ²</th><td>${result.chiSquare?.toFixed(4)}</td></tr>
+        <tr><th>${t('degreesOfFreedom')}</th><td>${result.df}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4)}</td></tr>
+        <tr><th>Cramér's V</th><td>${result.cramersV?.toFixed(4)} (${t(result.effectSizeLabel)})</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${result.significant ? t('variablesAssociated') || 'Variables are associated' : t('variablesIndependent') || 'Variables are independent'}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
+function renderSpearmanCorrelationResult(result) {
+    const sigClass = result.significant ? 'color:#22c55e;font-weight:bold' : 'color:#ef4444';
+
+    let html = `<h4 style="margin:0 0 8px;font-size:14px">${t('spearmanCorrelation') || "Spearman's Correlation"}</h4>
+    <table class="result-table">
+        <tbody>
+        <tr><th>N</th><td>${result.n}</td></tr>
+        <tr><th>ρ (rho)</th><td><strong style="font-size:1.2em">${result.rho?.toFixed(4)}</strong></td></tr>
+        <tr><th>${t('direction') || 'Direction'}</th><td>${t(result.direction)}</td></tr>
+        <tr><th>${t('strength') || 'Strength'}</th><td>${t(result.strength)}</td></tr>
+        <tr><th>t-${t('statistic')}</th><td>${result.tStatistic?.toFixed(4)}</td></tr>
+        <tr><th>${t('degreesOfFreedom')}</th><td>${result.df}</td></tr>
+        <tr><th>P-${t('value')}</th><td style="${sigClass}">${result.pValue?.toFixed(4)}</td></tr>
+        </tbody>
+    </table>`;
+
+    html += `<div style="margin-top:16px;padding:12px;border-radius:8px;background:${result.significant ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}">
+        <strong style="${sigClass}">${t(result.conclusion?.includes('Significant') ? 'significantCorrelation' : 'noSignificantCorrelation') || result.conclusion}</strong> (α = 0.05)
+    </div>`;
+
+    return html;
+}
+
 function renderMultiRegressionResult(result) {
     // Regression Equation
     let html = `<div class="regression-equation" style="background:var(--bg-tertiary);padding:12px;border-radius:8px;margin-bottom:16px;font-family:monospace;font-size:13px;overflow-x:auto">
@@ -1531,6 +2363,58 @@ function renderMultiRegressionResult(result) {
         </div>`;
     }
 
+    // Model Diagnostics
+    if (result.diagnostics) {
+        const d = result.diagnostics;
+        html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('modelDiagnostics')}</h4>
+        <table class="result-table">
+            <thead><tr>
+                <th>${t('test')}</th>
+                <th>${t('testStatistic')}</th>
+                <th>P-Value</th>
+                <th>${t('conclusion')}</th>
+            </tr></thead>
+            <tbody>`;
+
+        // Jarque-Bera Test
+        if (d.jarqueBera) {
+            const jb = d.jarqueBera;
+            const jbColor = jb.isNormal ? '#22c55e' : '#ef4444';
+            html += `<tr>
+                <td><strong>${t('jarqueBera')}</strong></td>
+                <td>${jb.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${jb.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${jbColor};font-weight:600">${jb.isNormal ? '✓ ' + t('normalResiduals') : '✗ ' + t('nonNormalResiduals')}</td>
+            </tr>`;
+        }
+
+        // Serial Correlation (Breusch-Godfrey)
+        if (d.serialCorrelation) {
+            const sc = d.serialCorrelation;
+            const scColor = sc.hasSerialCorrelation ? '#ef4444' : '#22c55e';
+            html += `<tr>
+                <td><strong>${t('serialCorrelation')}</strong></td>
+                <td>${sc.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${sc.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${scColor};font-weight:600">${sc.hasSerialCorrelation ? '✗ ' + t('hasSerialCorrelation') : '✓ ' + t('noSerialCorrelation')}</td>
+            </tr>`;
+        }
+
+        // Heteroskedasticity (Breusch-Pagan)
+        if (d.heteroskedasticity) {
+            const bp = d.heteroskedasticity;
+            const bpColor = bp.hasHeteroskedasticity ? '#ef4444' : '#22c55e';
+            html += `<tr>
+                <td><strong>${t('heteroskedasticity')}</strong></td>
+                <td>${bp.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${bp.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${bpColor};font-weight:600">${bp.hasHeteroskedasticity ? '✗ ' + t('hasHeteroskedasticity') : '✓ ' + t('homoskedastic')}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table>`;
+    }
+
     return html;
 }
 
@@ -1560,7 +2444,7 @@ function renderARDLResult(result) {
     // Model Diagnostics
     if (result.diagnostics) {
         const d = result.diagnostics;
-        html += `<h4 style="margin:16px 0 8px;font-size:14px">Model Diagnostics</h4>
+        html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('modelDiagnostics')}</h4>
         <table class="result-table">
             <tbody>
             <tr><th>${t('rSquared')}</th><td>${d.rSquared?.toFixed(4) || 'N/A'}</td>
@@ -1571,6 +2455,96 @@ function renderARDLResult(result) {
                 <th>N</th><td>${d.n || 'N/A'}</td></tr>
             </tbody>
         </table>`;
+
+        // Diagnostic Tests Table
+        html += `<h4 style="margin:16px 0 8px;font-size:14px">${t('diagnosticTests')}</h4>
+        <table class="result-table">
+            <thead><tr>
+                <th>${t('test')}</th>
+                <th>${t('testStatistic')}</th>
+                <th>P-Value</th>
+                <th>${t('conclusion')}</th>
+            </tr></thead>
+            <tbody>`;
+
+        // Jarque-Bera Test
+        if (d.jarqueBera) {
+            const jb = d.jarqueBera;
+            const jbColor = jb.isNormal ? '#22c55e' : '#ef4444';
+            html += `<tr>
+                <td><strong>${t('jarqueBera')}</strong></td>
+                <td>${jb.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${jb.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${jbColor};font-weight:600">${jb.isNormal ? '✓ ' + t('normalResiduals') : '✗ ' + t('nonNormalResiduals')}</td>
+            </tr>`;
+        }
+
+        // Serial Correlation (Breusch-Godfrey)
+        if (d.serialCorrelation) {
+            const sc = d.serialCorrelation;
+            const scColor = sc.hasSerialCorrelation ? '#ef4444' : '#22c55e';
+            html += `<tr>
+                <td><strong>${t('serialCorrelation')}</strong></td>
+                <td>${sc.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${sc.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${scColor};font-weight:600">${sc.hasSerialCorrelation ? '✗ ' + t('hasSerialCorrelation') : '✓ ' + t('noSerialCorrelation')}</td>
+            </tr>`;
+        }
+
+        // Heteroskedasticity (Breusch-Pagan)
+        if (d.heteroskedasticity) {
+            const bp = d.heteroskedasticity;
+            const bpColor = bp.hasHeteroskedasticity ? '#ef4444' : '#22c55e';
+            html += `<tr>
+                <td><strong>${t('heteroskedasticity')}</strong></td>
+                <td>${bp.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${bp.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${bpColor};font-weight:600">${bp.hasHeteroskedasticity ? '✗ ' + t('hasHeteroskedasticity') : '✓ ' + t('homoskedastic')}</td>
+            </tr>`;
+        }
+
+        // CUSUM Test
+        if (d.cusum) {
+            const cs = d.cusum;
+            const csColor = cs.isStable ? '#22c55e' : '#ef4444';
+            html += `<tr>
+                <td><strong>${t('cusumTest')}</strong></td>
+                <td>${cs.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>CV: ${cs.criticalValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${csColor};font-weight:600">${cs.isStable ? '✓ ' + t('cusumStable') : '✗ ' + t('cusumUnstable')}</td>
+            </tr>`;
+        }
+
+        // Ramsey RESET Test
+        if (d.ramseyReset) {
+            const rr = d.ramseyReset;
+            const rrColor = rr.isCorrect ? '#22c55e' : '#ef4444';
+            html += `<tr>
+                <td><strong>${t('ramseyReset')}</strong></td>
+                <td>${rr.statistic?.toFixed(4) || 'N/A'}</td>
+                <td>${rr.pValue?.toFixed(4) || 'N/A'}</td>
+                <td style="color:${rrColor};font-weight:600">${rr.isCorrect ? '✓ ' + t('correctSpecification') : '✗ ' + t('misspecification')}</td>
+            </tr>`;
+        }
+
+        // Bounds Test (from boundsTest result)
+        if (result.boundsTest) {
+            const bt = result.boundsTest;
+            const btColor = bt.conclusion?.includes('exists') || bt.conclusion?.includes('يوجد') ? '#22c55e' :
+                bt.conclusion?.includes('No') || bt.conclusion?.includes('لا') ? '#ef4444' : '#f59e0b';
+            const btConclusion = bt.conclusion?.includes('exists') || bt.conclusion?.includes('يوجد') ?
+                '✓ ' + t('cointegrationExists') :
+                bt.conclusion?.includes('No') || bt.conclusion?.includes('لا') ?
+                    '✗ ' + t('noCointegration') : '⚠ ' + t('inconclusive');
+            html += `<tr>
+                <td><strong>${t('boundsTest')}</strong></td>
+                <td>F = ${bt.fStatistic?.toFixed(4) || 'N/A'}</td>
+                <td>I(0): ${bt.criticalValues?.lower?.toFixed(2)} | I(1): ${bt.criticalValues?.upper?.toFixed(2)}</td>
+                <td style="color:${btColor};font-weight:600">${btConclusion}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table>`;
     }
 
     // Long-Run Coefficients
@@ -2703,3 +3677,324 @@ function renderViewChart(result) {
 
     if (config) new Chart(ctx, config);
 }
+
+// ========================================
+// Data Entry Editor (SPSS-like)
+// ========================================
+let currentDataEntryNode = null;
+let dataEntryColumns = [];
+let dataEntryData = [];
+
+function openDataEntryEditor(nodeId) {
+    try {
+        console.log('openDataEntryEditor called with nodeId:', nodeId);
+        alert('Inside openDataEntryEditor function');
+
+        // Find node - try canvas.nodes first, then check if canvas exists
+        let node = null;
+        if (typeof canvas !== 'undefined' && canvas.nodes) {
+            node = canvas.nodes.find(n => n.id === nodeId);
+            console.log('Node found:', node);
+        }
+
+        if (!node) {
+            console.error('Node not found:', nodeId);
+            // Try to open modal anyway with default data
+            node = { id: nodeId, config: { columns: ['Variable1', 'Variable2'], data: [], rows: 10 } };
+        }
+
+        currentDataEntryNode = node;
+        dataEntryColumns = [...(node.config.columns || ['Variable1', 'Variable2'])];
+        dataEntryData = JSON.parse(JSON.stringify(node.config.data || []));
+
+        // Ensure minimum rows
+        const minRows = node.config.rows || 10;
+        while (dataEntryData.length < minRows) {
+            const row = {};
+            dataEntryColumns.forEach(col => row[col] = '');
+            dataEntryData.push(row);
+        }
+
+        console.log('Before renderDataEntryGrid');
+        renderDataEntryGrid();
+        console.log('After renderDataEntryGrid');
+
+        updateDataEntryInfo();
+        console.log('After updateDataEntryInfo');
+
+        const modal = document.getElementById('dataEntryModal');
+        console.log('Modal element:', modal);
+        if (modal) {
+            modal.classList.add('open');
+            console.log('Modal classes after adding open:', modal.classList);
+            alert('Modal should be open now!');
+        } else {
+            console.error('dataEntryModal element not found!');
+            alert('Error: Modal element not found');
+        }
+    } catch (error) {
+        console.error('Error in openDataEntryEditor:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+function closeDataEntryEditor() {
+    document.getElementById('dataEntryModal').classList.remove('open');
+    currentDataEntryNode = null;
+}
+
+function renderDataEntryGrid() {
+    const grid = document.getElementById('dataEntryGrid');
+    if (!grid) return;
+
+    let html = '<thead><tr>';
+    // Row number header
+    html += '<th class="row-num">#</th>';
+    // Column headers
+    dataEntryColumns.forEach((col, i) => {
+        html += `<th>
+            <input type="text" class="col-header-input" 
+                value="${col}" 
+                onchange="updateColumnName(${i}, this.value)"
+                onfocus="this.select()">
+            ${dataEntryColumns.length > 1 ?
+                `<button class="delete-col-btn" onclick="deleteDataColumn(${i})" title="${t('delete')}">
+                    <i class="fas fa-times"></i>
+                </button>` : ''}
+        </th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    // Data rows
+    dataEntryData.forEach((row, rowIndex) => {
+        html += '<tr>';
+        html += `<td class="row-num">
+            ${rowIndex + 1}
+            <button class="delete-row-btn" onclick="deleteDataRow(${rowIndex})" title="${t('delete')}">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>`;
+        dataEntryColumns.forEach((col, colIndex) => {
+            const value = row[col] || '';
+            html += `<td>
+                <input type="text" class="cell-input" 
+                    value="${value}" 
+                    data-row="${rowIndex}" 
+                    data-col="${colIndex}"
+                    onchange="updateDataCell(${rowIndex}, ${colIndex}, this.value)"
+                    onkeydown="handleCellKeydown(event, ${rowIndex}, ${colIndex})"
+                    onfocus="this.select()">
+            </td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody>';
+    grid.innerHTML = html;
+}
+
+function updateDataCell(rowIndex, colIndex, value) {
+    const colName = dataEntryColumns[colIndex];
+    if (dataEntryData[rowIndex]) {
+        dataEntryData[rowIndex][colName] = value;
+    }
+    updateDataEntryInfo();
+}
+
+function updateColumnName(colIndex, newName) {
+    const oldName = dataEntryColumns[colIndex];
+    if (oldName === newName) return;
+
+    // Update column name
+    dataEntryColumns[colIndex] = newName;
+
+    // Update data to use new column name
+    dataEntryData.forEach(row => {
+        if (row.hasOwnProperty(oldName)) {
+            row[newName] = row[oldName];
+            delete row[oldName];
+        }
+    });
+
+    renderDataEntryGrid();
+}
+
+function handleCellKeydown(event, rowIndex, colIndex) {
+    const key = event.key;
+    const grid = document.getElementById('dataEntryGrid');
+    const inputs = grid.querySelectorAll('.cell-input');
+    const currentIndex = rowIndex * dataEntryColumns.length + colIndex;
+
+    if (key === 'Tab' || key === 'Enter') {
+        event.preventDefault();
+        const isShift = event.shiftKey;
+        let nextIndex = isShift ? currentIndex - 1 : currentIndex + 1;
+
+        // If at end of row and pressing Enter/Tab, move to next row
+        if (key === 'Enter' && !isShift) {
+            nextIndex = (rowIndex + 1) * dataEntryColumns.length + colIndex;
+            // Add new row if at last row
+            if (rowIndex === dataEntryData.length - 1) {
+                addDataRow();
+                setTimeout(() => {
+                    const newInputs = grid.querySelectorAll('.cell-input');
+                    const newIndex = rowIndex * dataEntryColumns.length + colIndex + dataEntryColumns.length;
+                    if (newInputs[newIndex]) newInputs[newIndex].focus();
+                }, 50);
+                return;
+            }
+        }
+
+        if (nextIndex >= 0 && nextIndex < inputs.length) {
+            inputs[nextIndex].focus();
+        }
+    } else if (key === 'ArrowDown') {
+        event.preventDefault();
+        const nextIndex = (rowIndex + 1) * dataEntryColumns.length + colIndex;
+        if (inputs[nextIndex]) inputs[nextIndex].focus();
+    } else if (key === 'ArrowUp') {
+        event.preventDefault();
+        const nextIndex = (rowIndex - 1) * dataEntryColumns.length + colIndex;
+        if (nextIndex >= 0 && inputs[nextIndex]) inputs[nextIndex].focus();
+    } else if (key === 'ArrowRight' && event.target.selectionStart === event.target.value.length) {
+        event.preventDefault();
+        if (inputs[currentIndex + 1]) inputs[currentIndex + 1].focus();
+    } else if (key === 'ArrowLeft' && event.target.selectionStart === 0) {
+        event.preventDefault();
+        if (currentIndex > 0 && inputs[currentIndex - 1]) inputs[currentIndex - 1].focus();
+    }
+}
+
+function addDataRow() {
+    const row = {};
+    dataEntryColumns.forEach(col => row[col] = '');
+    dataEntryData.push(row);
+    renderDataEntryGrid();
+    updateDataEntryInfo();
+}
+
+function addDataColumn() {
+    // Generate unique column name
+    let num = dataEntryColumns.length + 1;
+    let newName = `Variable${num}`;
+    while (dataEntryColumns.includes(newName)) {
+        num++;
+        newName = `Variable${num}`;
+    }
+
+    dataEntryColumns.push(newName);
+    dataEntryData.forEach(row => row[newName] = '');
+    renderDataEntryGrid();
+    updateDataEntryInfo();
+}
+
+function deleteDataRow(rowIndex) {
+    if (dataEntryData.length <= 1) return;
+    dataEntryData.splice(rowIndex, 1);
+    renderDataEntryGrid();
+    updateDataEntryInfo();
+}
+
+function deleteDataColumn(colIndex) {
+    if (dataEntryColumns.length <= 1) return;
+    const colName = dataEntryColumns[colIndex];
+    dataEntryColumns.splice(colIndex, 1);
+    dataEntryData.forEach(row => delete row[colName]);
+    renderDataEntryGrid();
+    updateDataEntryInfo();
+}
+
+function clearDataEntry() {
+    if (!confirm(t('confirmDelete') || 'Clear all data?')) return;
+    dataEntryData = [];
+    const minRows = currentDataEntryNode?.config?.rows || 10;
+    for (let i = 0; i < minRows; i++) {
+        const row = {};
+        dataEntryColumns.forEach(col => row[col] = '');
+        dataEntryData.push(row);
+    }
+    renderDataEntryGrid();
+    updateDataEntryInfo();
+}
+
+function importDataFile() {
+    const input = document.getElementById('dataEntryFileInput');
+    if (input) {
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) handleDataFileImport(file);
+            input.value = '';
+        };
+        input.click();
+    }
+}
+
+async function handleDataFileImport(file) {
+    try {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+            if (json.length > 0) {
+                // First row as headers
+                dataEntryColumns = json[0].map((h, i) => h?.toString().trim() || `Variable${i + 1}`);
+
+                // Rest as data
+                dataEntryData = [];
+                for (let i = 1; i < json.length; i++) {
+                    const row = {};
+                    dataEntryColumns.forEach((col, j) => {
+                        row[col] = json[i][j] ?? '';
+                    });
+                    dataEntryData.push(row);
+                }
+
+                // Ensure minimum rows
+                const minRows = currentDataEntryNode?.config?.rows || 10;
+                while (dataEntryData.length < minRows) {
+                    const row = {};
+                    dataEntryColumns.forEach(col => row[col] = '');
+                    dataEntryData.push(row);
+                }
+
+                renderDataEntryGrid();
+                updateDataEntryInfo();
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } catch (error) {
+        console.error('Import error:', error);
+        alert(t('error') + ': ' + error.message);
+    }
+}
+
+function saveDataEntry() {
+    if (!currentDataEntryNode) return;
+
+    // Filter out empty rows
+    const cleanedData = dataEntryData.filter(row =>
+        dataEntryColumns.some(col => row[col] !== '' && row[col] != null)
+    );
+
+    currentDataEntryNode.config.columns = [...dataEntryColumns];
+    currentDataEntryNode.config.data = cleanedData;
+
+    // Update properties panel
+    showNodeProperties(currentDataEntryNode);
+
+    closeDataEntryEditor();
+}
+
+function updateDataEntryInfo() {
+    const info = document.getElementById('dataEntryInfo');
+    if (info) {
+        const filledRows = dataEntryData.filter(row =>
+            dataEntryColumns.some(col => row[col] !== '' && row[col] != null)
+        ).length;
+        info.textContent = `${dataEntryColumns.length} ${t('selectColumns') || 'columns'} × ${filledRows} ${t('maxRows') || 'rows'}`;
+    }
+}
+
